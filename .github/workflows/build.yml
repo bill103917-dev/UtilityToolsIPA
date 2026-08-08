@@ -1,4 +1,4 @@
-name: Build Real IPA
+name: Build Utility IPA
 on: [workflow_dispatch]
 jobs:
   build:
@@ -7,23 +7,117 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build Arm64 IPA Directly
+      - name: Build App Executable & IPA
         run: |
-          # 1. 建立 Payload/TestApp.app 目錄
+          # 1. 建立 iOS App 資料夾結構
           mkdir -p Payload/TestApp.app
 
-          # 2. 建立標準 Info.plist 檔
+          # 2. 寫入小工具 Swift 程式碼 (UIKit 原生 App)
+          cat << 'EOF' > main.swift
+          import UIKit
+
+          @main
+          class AppDelegate: UIResponder, UIApplicationDelegate {
+              var window: UIWindow?
+
+              func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+                  window = UIWindow(frame: UIScreen.main.bounds)
+                  let nav = UINavigationController(rootViewController: MainViewController())
+                  window?.rootViewController = nav
+                  window?.makeKeyAndVisible()
+                  return true
+              }
+          }
+
+          class MainViewController: UIViewController {
+              private var count = 0
+              private let countLabel = UILabel()
+
+              override func viewDidLoad() {
+                  super.viewDidLoad()
+                  title = "實用隨機抽籤與計數器"
+                  view.backgroundColor = .systemGroupedBackground
+                  setupUI()
+              }
+
+              private func setupUI() {
+                  countLabel.text = "目前計數：0"
+                  countLabel.font = .systemFont(ofSize: 26, weight: .bold)
+                  countLabel.textAlignment = .center
+                  countLabel.textColor = .label
+
+                  let plusButton = UIButton(type: .system)
+                  plusButton.setTitle(" ➕ 計數 +1 ", for: .normal)
+                  plusButton.titleLabel?.font = .systemFont(ofSize: 20, weight: .semibold)
+                  plusButton.backgroundColor = .systemBlue
+                  plusButton.setTitleColor(.white, for: .normal)
+                  plusButton.layer.cornerRadius = 14
+                  plusButton.addTarget(self, action: #selector(addCount), for: .touchUpInside)
+
+                  let resetButton = UIButton(type: .system)
+                  resetButton.setTitle(" 🔄 歸零 ", for: .normal)
+                  resetButton.titleLabel?.font = .systemFont(ofSize: 18, weight: .medium)
+                  resetButton.backgroundColor = .systemGray4
+                  resetButton.setTitleColor(.label, for: .normal)
+                  resetButton.layer.cornerRadius = 14
+                  resetButton.addTarget(self, action: #selector(resetCount), for: .touchUpInside)
+
+                  let diceButton = UIButton(type: .system)
+                  diceButton.setTitle(" 🎲 隨機抽數字 (1-100) ", for: .normal)
+                  diceButton.titleLabel?.font = .systemFont(ofSize: 20, weight: .semibold)
+                  diceButton.backgroundColor = .systemOrange
+                  diceButton.setTitleColor(.white, for: .normal)
+                  diceButton.layer.cornerRadius = 14
+                  diceButton.addTarget(self, action: #selector(rollDice), for: .touchUpInside)
+
+                  let stack = UIStackView(arrangedSubviews: [countLabel, plusButton, resetButton, diceButton])
+                  stack.axis = .vertical
+                  stack.spacing = 16
+                  stack.distribution = .fillEqually
+                  stack.translatesAutoresizingMaskIntoConstraints = false
+
+                  view.addSubview(stack)
+
+                  NSLayoutConstraint.activate([
+                      stack.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+                      stack.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+                      stack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 40),
+                      stack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -40),
+                      stack.heightAnchor.constraint(equalToConstant: 280)
+                  ])
+              }
+
+              @objc private func addCount() {
+                  count += 1
+                  countLabel.text = "目前計數：\(count)"
+              }
+
+              @objc private func resetCount() {
+                  count = 0
+                  countLabel.text = "目前計數：0"
+              }
+
+              @objc private func rollDice() {
+                  let randomNum = Int.random(in: 1...100)
+                  let alert = UIAlertController(title: "🎲 抽籤結果", message: "你抽到的數字是：\(randomNum)", preferredStyle: .alert)
+                  alert.addAction(UIAlertAction(title: "太棒了", style: .default))
+                  present(alert, animated: true)
+              }
+          }
+          EOF
+
+          # 3. 建立標準 Info.plist 檔案
           cat << 'EOF' > Payload/TestApp.app/Info.plist
           <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.plist">
           <plist version="1.0">
           <dict>
               <key>CFBundleExecutable</key>
               <string>TestApp</string>
               <key>CFBundleIdentifier</key>
-              <string>com.example.testapp</string>
+              <string>com.example.utilityapp</string>
               <key>CFBundleName</key>
-              <string>TestApp</string>
+              <string>實用小工具</string>
               <key>CFBundlePackageType</key>
               <string>APPL</string>
               <key>CFBundleShortVersionString</key>
@@ -32,29 +126,21 @@ jobs:
               <string>1</string>
               <key>MinimumOSVersion</key>
               <string>15.0</string>
+              <key>UILaunchScreen</key>
+              <dict/>
           </dict>
           EOF
 
-          # 3. 寫入 iOS 原生程式碼
-          cat << 'EOF' > main.m
-          #import <UIKit/UIKit.h>
-
-          int main(int argc, char * argv[]) {
-              @autoreleasepool {
-                  return UIApplicationMain(argc, argv, nil, nil);
-              }
-          }
-          EOF
-
-          # 4. 直接使用 clang 編譯成 ARM64 機器碼（完全不使用 xcodebuild）
+          # 4. 使用 swiftc 編譯 iOS 原生 ARM64 機器碼
           SDK_PATH=$(xcrun --sdk iphoneos --show-sdk-path)
-          xcrun --sdk iphoneos clang -arch arm64 -miphoneos-version-min=15.0 -isysroot "$SDK_PATH" -framework UIKit main.m -o Payload/TestApp.app/TestApp
+          xcrun --sdk iphoneos swiftc -target arm64-apple-ios15.0 -sdk "$SDK_PATH" -framework UIKit main.swift -o Payload/TestApp.app/TestApp
 
-          # 5. 打包成 .ipa
-          zip -r RealApp.ipa Payload
+          # 5. 賦予執行權限並打包成 RealTool.ipa
+          chmod +x Payload/TestApp.app/TestApp
+          zip -r RealTool.ipa Payload
 
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
-          name: real-ipa-file
-          path: RealApp.ipa
+          name: real-tool-ipa
+          path: RealTool.ipa
