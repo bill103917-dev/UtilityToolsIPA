@@ -12,96 +12,104 @@ jobs:
           # 1. 建立 iOS App 資料夾結構
           mkdir -p Payload/TestApp.app
 
-          # 2. 寫入小工具 Swift 程式碼 (UIKit 原生 App)
-          cat << 'EOF' > main.swift
-          import UIKit
+          # 2. 寫入小工具 Objective-C 程式碼 (具備 UI 與完整功能)
+          cat << 'EOF' > main.m
+          #import <UIKit/UIKit.h>
 
-          @main
-          class AppDelegate: UIResponder, UIApplicationDelegate {
-              var window: UIWindow?
+          @interface ViewController : UIViewController
+          @property (nonatomic, assign) NSInteger count;
+          @property (nonatomic, strong) UILabel *countLabel;
+          @end
 
-              func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-                  window = UIWindow(frame: UIScreen.main.bounds)
-                  let nav = UINavigationController(rootViewController: MainViewController())
-                  window?.rootViewController = nav
-                  window?.makeKeyAndVisible()
-                  return true
-              }
+          @implementation ViewController
+          - (void)viewDidLoad {
+              [super viewDidLoad];
+              self.title = @"隨機抽籤與計數器";
+              self.view.backgroundColor = [UIColor systemGroupedBackgroundColor];
+              
+              self.countLabel = [[UILabel alloc] init];
+              self.countLabel.text = @"目前計數：0";
+              self.countLabel.font = [UIFont systemFontOfSize:26 weight:UIFontWeightBold];
+              self.countLabel.textAlignment = NSTextAlignmentCenter;
+              
+              UIButton *plusBtn = [UIButton buttonWithType:UIButtonTypeSystem];
+              [plusBtn setTitle:@" ➕ 計數 +1 " forState:UIControlStateNormal];
+              plusBtn.titleLabel.font = [UIFont systemFontOfSize:20 weight:UIFontWeightSemibold];
+              plusBtn.backgroundColor = [UIColor systemBlueColor];
+              [plusBtn setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
+              plusBtn.layer.cornerRadius = 14;
+              [plusBtn addTarget:self action:@selector(addCount) forControlEvents:UIControlEventTouchUpInside];
+              
+              UIButton *resetBtn = [UIButton buttonWithType:UIButtonTypeSystem];
+              [resetBtn setTitle:@" 🔄 歸零 " forState:UIControlStateNormal];
+              resetBtn.titleLabel.font = [UIFont systemFontOfSize:18 weight:UIFontWeightMedium];
+              resetBtn.backgroundColor = [UIColor systemGray4Color];
+              [resetBtn setTitleColor:[UIColor labelColor] forState:UIControlStateNormal];
+              resetBtn.layer.cornerRadius = 14;
+              [resetBtn addTarget:self action:@selector(resetCount) forControlEvents:UIControlEventTouchUpInside];
+              
+              UIButton *diceBtn = [UIButton buttonWithType:UIButtonTypeSystem];
+              [diceBtn setTitle:@" 🎲 隨機抽數字 (1-100) " forState:UIControlStateNormal];
+              diceBtn.titleLabel.font = [UIFont systemFontOfSize:20 weight:UIFontWeightSemibold];
+              diceBtn.backgroundColor = [UIColor systemOrangeColor];
+              [diceBtn setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
+              diceBtn.layer.cornerRadius = 14;
+              [diceBtn addTarget:self action:@selector(rollDice) forControlEvents:UIControlEventTouchUpInside];
+              
+              UIStackView *stack = [[UIStackView alloc] initWithArrangedSubviews:@[self.countLabel, plusBtn, resetBtn, diceBtn]];
+              stack.axis = UILayoutConstraintAxisVertical;
+              stack.spacing = 16;
+              stack.distribution = UIStackViewDistributionFillEqually;
+              stack.translatesAutoresizingMaskIntoConstraints = NO;
+              
+              [self.view addSubview:stack];
+              
+              [NSLayoutConstraint activateConstraints:@[
+                  [stack.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor],
+                  [stack.centerYAnchor constraintEqualToAnchor:self.view.centerYAnchor],
+                  [stack.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:40],
+                  [stack.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-40],
+                  [stack.heightAnchor constraintEqualToConstant:280]
+              ]];
           }
 
-          class MainViewController: UIViewController {
-              private var count = 0
-              private let countLabel = UILabel()
+          - (void)addCount {
+              self.count++;
+              self.countLabel.text = [NSString stringWithFormat:@"目前計數：%ld", (long)self.count];
+          }
 
-              override func viewDidLoad() {
-                  super.viewDidLoad()
-                  title = "實用隨機抽籤與計數器"
-                  view.backgroundColor = .systemGroupedBackground
-                  setupUI()
-              }
+          - (void)resetCount {
+              self.count = 0;
+              self.countLabel.text = @"目前計數：0";
+          }
 
-              private func setupUI() {
-                  countLabel.text = "目前計數：0"
-                  countLabel.font = .systemFont(ofSize: 26, weight: .bold)
-                  countLabel.textAlignment = .center
-                  countLabel.textColor = .label
+          - (void)rollDice {
+              NSInteger num = (arc4random() % 100) + 1;
+              NSString *msg = [NSString stringWithFormat:@"你抽到的數字是：%ld", (long)num];
+              UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"🎲 抽籤結果" message:msg preferredStyle:UIAlertControllerStyleAlert];
+              [alert addAction:[UIAlertAction actionWithTitle:@"太棒了" style:UIAlertActionStyleDefault handler:nil]];
+              [self presentViewController:alert animated:YES completion:nil];
+          }
+          @end
 
-                  let plusButton = UIButton(type: .system)
-                  plusButton.setTitle(" ➕ 計數 +1 ", for: .normal)
-                  plusButton.titleLabel?.font = .systemFont(ofSize: 20, weight: .semibold)
-                  plusButton.backgroundColor = .systemBlue
-                  plusButton.setTitleColor(.white, for: .normal)
-                  plusButton.layer.cornerRadius = 14
-                  plusButton.addTarget(self, action: #selector(addCount), for: .touchUpInside)
+          @interface AppDelegate : UIResponder <UIApplicationDelegate>
+          @property (strong, nonatomic) UIWindow *window;
+          @end
 
-                  let resetButton = UIButton(type: .system)
-                  resetButton.setTitle(" 🔄 歸零 ", for: .normal)
-                  resetButton.titleLabel?.font = .systemFont(ofSize: 18, weight: .medium)
-                  resetButton.backgroundColor = .systemGray4
-                  resetButton.setTitleColor(.label, for: .normal)
-                  resetButton.layer.cornerRadius = 14
-                  resetButton.addTarget(self, action: #selector(resetCount), for: .touchUpInside)
+          @implementation AppDelegate
+          - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
+              self.window = [[UIWindow alloc] initWithFrame:[UIScreen mainScreen].bounds];
+              ViewController *vc = [[ViewController alloc] init];
+              UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:vc];
+              self.window.rootViewController = nav;
+              [self.window makeKeyAndVisible];
+              return YES;
+          }
+          @end
 
-                  let diceButton = UIButton(type: .system)
-                  diceButton.setTitle(" 🎲 隨機抽數字 (1-100) ", for: .normal)
-                  diceButton.titleLabel?.font = .systemFont(ofSize: 20, weight: .semibold)
-                  diceButton.backgroundColor = .systemOrange
-                  diceButton.setTitleColor(.white, for: .normal)
-                  diceButton.layer.cornerRadius = 14
-                  diceButton.addTarget(self, action: #selector(rollDice), for: .touchUpInside)
-
-                  let stack = UIStackView(arrangedSubviews: [countLabel, plusButton, resetButton, diceButton])
-                  stack.axis = .vertical
-                  stack.spacing = 16
-                  stack.distribution = .fillEqually
-                  stack.translatesAutoresizingMaskIntoConstraints = false
-
-                  view.addSubview(stack)
-
-                  NSLayoutConstraint.activate([
-                      stack.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-                      stack.centerYAnchor.constraint(equalTo: view.centerYAnchor),
-                      stack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 40),
-                      stack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -40),
-                      stack.heightAnchor.constraint(equalToConstant: 280)
-                  ])
-              }
-
-              @objc private func addCount() {
-                  count += 1
-                  countLabel.text = "目前計數：\(count)"
-              }
-
-              @objc private func resetCount() {
-                  count = 0
-                  countLabel.text = "目前計數：0"
-              }
-
-              @objc private func rollDice() {
-                  let randomNum = Int.random(in: 1...100)
-                  let alert = UIAlertController(title: "🎲 抽籤結果", message: "你抽到的數字是：\(randomNum)", preferredStyle: .alert)
-                  alert.addAction(UIAlertAction(title: "太棒了", style: .default))
-                  present(alert, animated: true)
+          int main(int argc, char * argv[]) {
+              @autoreleasepool {
+                  return UIApplicationMain(argc, argv, nil, NSStringFromClass([AppDelegate class]));
               }
           }
           EOF
@@ -131,9 +139,9 @@ jobs:
           </dict>
           EOF
 
-          # 4. 使用 swiftc 編譯 iOS 原生 ARM64 機器碼
+          # 4. 使用 clang 編譯 iOS ARM64 機器碼並連結 UIKit 框架
           SDK_PATH=$(xcrun --sdk iphoneos --show-sdk-path)
-          xcrun --sdk iphoneos swiftc -target arm64-apple-ios15.0 -sdk "$SDK_PATH" -framework UIKit main.swift -o Payload/TestApp.app/TestApp
+          clang -target arm64-apple-ios15.0 -isysroot "$SDK_PATH" -framework UIKit -framework Foundation main.m -o Payload/TestApp.app/TestApp
 
           # 5. 賦予執行權限並打包成 RealTool.ipa
           chmod +x Payload/TestApp.app/TestApp
