@@ -7,17 +7,33 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Create & Compile SwiftUI App
+      - name: Create & Build Xcode Project
         run: |
-          # 1. 建立 Swift 原始碼
-          mkdir -p AppSource
-          cat << 'EOF' > AppSource/main.swift
+          # 1. 建立 Swift 原生專案檔案結構
+          mkdir -p TestApp/TestApp
+          
+          cat << 'EOF' > TestApp/TestApp/TestAppApp.swift
           import SwiftUI
 
           @main
-          struct TestApp: App {
+          struct TestAppApp: App {
               var body: some Scene {
                   WindowGroup {
+                      ContentView()
+                  }
+              }
+          }
+          EOF
+
+          cat << 'EOF' > TestApp/TestApp/ContentView.swift
+          import SwiftUI
+
+          struct ContentView: View {
+              var body: some View {
+                  VStack {
+                      Image(systemName: "globe")
+                          .imageScale(.large)
+                          .foregroundColor(.accentColor)
                       Text("Hello, iPhone!")
                           .font(.largeTitle)
                           .padding()
@@ -26,39 +42,78 @@ jobs:
           }
           EOF
 
-          # 2. 建立 Info.plist
-          cat << 'EOF' > AppSource/Info.plist
+          cat << 'EOF' > TestApp/TestApp/Info.plist
           <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.plist">
           <plist version="1.0">
           <dict>
               <key>CFBundleExecutable</key>
-              <string>TestApp</string>
+              <string>$(EXECUTABLE_NAME)</string>
               <key>CFBundleIdentifier</key>
-              <string>com.example.realtestapp</string>
+              <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
               <key>CFBundleName</key>
-              <string>TestApp</string>
+              <string>$(PRODUCT_NAME)</string>
               <key>CFBundlePackageType</key>
               <string>APPL</string>
               <key>CFBundleShortVersionString</key>
               <string>1.0</string>
-              <key>MinimumOSVersion</key>
-              <string>15.0</string>
+              <key>CFBundleVersion</key>
+              <string>1</string>
+              <key>LSRequiresIPhoneOS</key>
+              <true/>
+              <key>UILaunchStoryboardName</key>
+              <string>LaunchScreen</string>
           </dict>
           </plist>
           EOF
 
-          # 3. 使用 swiftc 編譯真實的 arm64 執行檔
-          mkdir -p Payload/TestApp.app
-          SDK_PATH=$(xcrun --sdk iphoneos --show-sdk-path)
-          swiftc -target arm64-apple-ios15.0 -sdk $SDK_PATH AppSource/main.swift -o Payload/TestApp.app/TestApp
-          cp AppSource/Info.plist Payload/TestApp.app/
+          # 2. 建立 Xcode 專案結構
+          mkdir -p TestApp/TestApp.xcodeproj
+          cat << 'EOF' > TestApp/TestApp.xcodeproj/project.pbxproj
+          // !$*UTF8*$!
+          {
+            archiveVersion = 1;
+            classes = {};
+            objectVersion = 56;
+            objects = {
+              1001 /* TestAppApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestAppApp.swift; sourceTree = "<group>"; };
+              1002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+              1003 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+              1004 /* TestApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TestApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+              2001 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = ( 3001 /* TestAppApp.swift in Sources */, 3002 /* ContentView.swift in Sources */, ); runOnlyForDeploymentPostprocessing = 0; };
+              2002 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+              2003 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+              3001 /* TestAppApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1001 /* TestAppApp.swift */; };
+              3002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1002 /* ContentView.swift */; };
+              4001 /* Main Group */ = {isa = PBXGroup; children = ( 4002 /* TestApp */, 4003 /* Products */, ); sourceTree = "<group>"; };
+              4002 /* TestApp */ = {isa = PBXGroup; children = ( 1001 /* TestAppApp.swift */, 1002 /* ContentView.swift */, 1003 /* Info.plist */, ); path = TestApp; sourceTree = "<group>"; };
+              4003 /* Products */ = {isa = PBXGroup; children = ( 1004 /* TestApp.app */, ); name = Products; sourceTree = "<group>"; };
+              5001 /* Native Target */ = {isa = PBXNativeTarget; buildConfigurationList = 6001 /* Build Configurations */; buildPhases = ( 2001 /* Sources */, 2002 /* Frameworks */, 2003 /* Resources */, ); buildRules = (); dependencies = (); name = TestApp; productName = TestApp; productReference = 1004 /* TestApp.app */; productType = "com.apple.product-type.application"; };
+              6001 /* Build Configurations */ = {isa = XCConfigurationList; buildConfigurations = ( 6002 /* Release */, ); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+              6002 /* Release */ = {isa = XCBuildConfiguration; buildSettings = { ALWAYS_SEARCH_USER_PATHS = NO; CLANG_ENABLE_MODULES = YES; CODE_SIGNING_ALLOWED = NO; CODE_SIGNING_REQUIRED = NO; CODE_SIGN_IDENTITY = ""; DEFINES_MODULE = YES; GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = TestApp/Info.plist; IPAD_COMPATIBLE_SUBSETS = "1,2"; iPhoneOS_DEPLOYMENT_TARGET = 15.0; PRODUCT_BUNDLE_IDENTIFIER = com.example.realapp; PRODUCT_NAME = TestApp; SDKROOT = iphoneos; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = "1,2"; }; name = Release; };
+            };
+            rootObject = 7001 /* Project Object */;
+          }
+          EOF
+
+          # 3. 使用 xcodebuild 進行標準 iOS 編譯
+          cd TestApp
+          xcodebuild clean build \
+            -project TestApp.xcodeproj \
+            -sdk iphoneos \
+            -configuration Release \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            BUILD_DIR=build
 
           # 4. 打包成 .ipa
+          mkdir -p Payload
+          cp -r build/Release-iphoneos/TestApp.app Payload/
           zip -r RealApp.ipa Payload
 
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
           name: real-ipa-file
-          path: RealApp.ipa
+          path: TestApp/RealApp.ipa
