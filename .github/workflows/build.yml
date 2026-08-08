@@ -1,4 +1,4 @@
-name: Build Real IPA
+name: Build Real IPA with Scheme
 on: [workflow_dispatch]
 jobs:
   build:
@@ -7,28 +7,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Create & Build App
+      - name: Create Xcode Project & Scheme
         run: |
-          # 1. 建立 Swift 原始碼
+          # 1. 建立 Swift 專案目錄結構
           mkdir -p TestApp/TestApp
           
-          cat << 'EOF' > TestApp/TestApp/TestAppApp.swift
+          # 2. 建立 App 入口程式碼
+          cat << 'EOF' > TestApp/TestApp/main.swift
           import SwiftUI
 
-          @main
-          struct TestAppApp: App {
-              var body: some Scene {
-                  WindowGroup {
-                      ContentView()
-                  }
-              }
-          }
-          EOF
-
-          cat << 'EOF' > TestApp/TestApp/ContentView.swift
-          import SwiftUI
-
-          struct ContentView: View {
+          struct MainView: View {
               var body: some View {
                   VStack(spacing: 20) {
                       Image(systemName: "star.fill")
@@ -37,15 +25,39 @@ jobs:
                       Text("Hello, iPhone!")
                           .font(.title)
                           .fontWeight(.bold)
-                      Text("這是一個真正的 iOS 原生 App！")
+                      Text("帶有 Scheme 的原生 iOS App！")
                           .font(.body)
                           .foregroundColor(.gray)
                   }
                   .padding()
               }
           }
+
+          @main
+          struct TestApp {
+              static func main() {
+                  UIApplicationMain(
+                      CommandLine.argc,
+                      CommandLine.unsafeArgv,
+                      nil,
+                      NSStringFromClass(AppDelegate.self)
+                  )
+              }
+          }
+
+          class AppDelegate: UIResponder, UIApplicationDelegate {
+              var window: UIWindow?
+              func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+                  let window = UIWindow(frame: UIScreen.main.bounds)
+                  window.rootViewController = UIHostingController(rootView: MainView())
+                  self.window = window
+                  window.makeKeyAndVisible()
+                  return true
+              }
+          }
           EOF
 
+          # 3. 建立 Info.plist
           cat << 'EOF' > TestApp/TestApp/Info.plist
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -65,11 +77,13 @@ jobs:
               <string>1</string>
               <key>LSRequiresIPhoneOS</key>
               <true/>
+              <key>MinimumOSVersion</key>
+              <string>15.0</string>
           </dict>
           </plist>
           EOF
 
-          # 2. 建立完美的 Xcode 專案檔
+          # 4. 建立 xcodeproj 檔案
           mkdir -p TestApp/TestApp.xcodeproj
           cat << 'EOF' > TestApp/TestApp.xcodeproj/project.pbxproj
           // !$*UTF8*$!
@@ -78,17 +92,15 @@ jobs:
             classes = {};
             objectVersion = 56;
             objects = {
-              1001 /* TestAppApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestAppApp.swift; sourceTree = "<group>"; };
-              1002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+              1001 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
               1003 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
               1004 /* TestApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TestApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
-              2001 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = ( 3001 /* TestAppApp.swift in Sources */, 3002 /* ContentView.swift in Sources */, ); runOnlyForDeploymentPostprocessing = 0; };
+              2001 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = ( 3001 /* main.swift in Sources */, ); runOnlyForDeploymentPostprocessing = 0; };
               2002 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
               2003 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
-              3001 /* TestAppApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1001 /* TestAppApp.swift */; };
-              3002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1002 /* ContentView.swift */; };
+              3001 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1001 /* main.swift */; };
               4001 /* Main Group */ = {isa = PBXGroup; children = ( 4002 /* TestApp */, 4003 /* Products */, ); sourceTree = "<group>"; };
-              4002 /* TestApp */ = {isa = PBXGroup; children = ( 1001 /* TestAppApp.swift */, 1002 /* ContentView.swift */, 1003 /* Info.plist */, ); path = TestApp; sourceTree = "<group>"; };
+              4002 /* TestApp */ = {isa = PBXGroup; children = ( 1001 /* main.swift */, 1003 /* Info.plist */, ); path = TestApp; sourceTree = "<group>"; };
               4003 /* Products */ = {isa = PBXGroup; children = ( 1004 /* TestApp.app */, ); name = Products; sourceTree = "<group>"; };
               5001 /* Native Target */ = {isa = PBXNativeTarget; buildConfigurationList = 6001 /* Build Configurations */; buildPhases = ( 2001 /* Sources */, 2002 /* Frameworks */, 2003 /* Resources */, ); buildRules = (); dependencies = (); name = TestApp; productName = TestApp; productReference = 1004 /* TestApp.app */; productType = "com.apple.product-type.application"; };
               6001 /* Build Configurations */ = {isa = XCConfigurationList; buildConfigurations = ( 6002 /* Release */, ); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
@@ -98,20 +110,50 @@ jobs:
           }
           EOF
 
-          # 3. 使用 archive 歸檔並繞過簽名檢查
+          # 5. 【關鍵點】建立共享的 Scheme 檔案 (.xcscheme)
+          mkdir -p TestApp/TestApp.xcodeproj/xcshareddata/xcschemes
+          cat << 'EOF' > TestApp/TestApp.xcodeproj/xcshareddata/xcschemes/TestApp.xcscheme
+          <?xml version="1.0" encoding="UTF-8"?>
+          <Scheme
+             LastUpgradeVersion = "1400"
+             version = "1.3">
+             <BuildAction
+                parallelizeBuildables = "YES"
+                buildImplicitDependencies = "YES">
+                <BuildActionEntries>
+                   <BuildActionEntry
+                      buildForTesting = "YES"
+                      buildForRunning = "YES"
+                      buildForProfiling = "YES"
+                      buildForArchiving = "YES"
+                      buildForAnalyzing = "YES">
+                      <BuildableReference
+                         BuildableIdentifier = "primary"
+                         BlueprintIdentifier = "5001"
+                         BuildableName = "TestApp.app"
+                         BlueprintName = "TestApp"
+                         ReferencedContainer = "container:TestApp.xcodeproj">
+                      </BuildableReference>
+                   </BuildActionEntry>
+                </BuildActionEntries>
+             </BuildAction>
+          </Scheme>
+          EOF
+
+          # 6. 使用指定 Scheme 進行編譯與打包
           cd TestApp
-          xcodebuild archive \
+          xcodebuild \
             -project TestApp.xcodeproj \
             -scheme TestApp \
-            -archivePath build/TestApp.xcarchive \
+            -configuration Release \
             -sdk iphoneos \
-            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO
+            CODE_SIGN_IDENTITY="" \
+            clean build
 
-          # 4. 解封打包成標準 .ipa
           mkdir -p Payload
-          cp -r build/TestApp.xcarchive/Products/Applications/TestApp.app Payload/
+          cp -r build/Release-iphoneos/TestApp.app Payload/
           zip -r RealApp.ipa Payload
 
       - name: Upload IPA
