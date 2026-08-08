@@ -7,12 +7,56 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build App Executable & IPA
+      - name: Build App Executable & Complete IPA
         run: |
-          # 1. 建立 iOS App 資料夾結構
+          # 1. 清理與建立 iOS App 資料夾結構
+          rm -rf Payload RealTool.ipa
           mkdir -p Payload/TestApp.app
 
-          # 2. 寫入小工具 Objective-C 程式碼 (具備 UI 與完整功能)
+          # 2. 寫入完整且合規的 Info.plist（含 ESign 必填標籤）
+          cat << 'EOF' > Payload/TestApp.app/Info.plist
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.plist">
+          <plist version="1.0">
+          <dict>
+              <key>CFBundleDevelopmentRegion</key>
+              <string>zh_TW</string>
+              <key>CFBundleExecutable</key>
+              <string>TestApp</string>
+              <key>CFBundleIdentifier</key>
+              <string>com.example.utilityapp</string>
+              <key>CFBundleInfoDictionaryVersion</key>
+              <string>6.0</string>
+              <key>CFBundleName</key>
+              <string>實用小工具</string>
+              <key>CFBundleDisplayName</key>
+              <string>實用小工具</string>
+              <key>CFBundlePackageType</key>
+              <string>APPL</string>
+              <key>CFBundleShortVersionString</key>
+              <string>1.0</string>
+              <key>CFBundleVersion</key>
+              <string>1</string>
+              <key>MinimumOSVersion</key>
+              <string>15.0</string>
+              <key>CFBundleSupportedPlatforms</key>
+              <array>
+                  <string>iPhoneOS</string>
+              </array>
+              <key>UIDeviceFamily</key>
+              <array>
+                  <integer>1</integer>
+                  <integer>2</integer>
+              </array>
+              <key>UILaunchScreen</key>
+              <dict/>
+          </dict>
+          EOF
+
+          # 3. 建立 PkgInfo 標籤檔
+          echo "APPL????" > Payload/TestApp.app/PkgInfo
+
+          # 4. 寫入 Objective-C 小工具程式碼
           cat << 'EOF' > main.m
           #import <UIKit/UIKit.h>
 
@@ -114,38 +158,14 @@ jobs:
           }
           EOF
 
-          # 3. 建立標準 Info.plist 檔案
-          cat << 'EOF' > Payload/TestApp.app/Info.plist
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.plist">
-          <plist version="1.0">
-          <dict>
-              <key>CFBundleExecutable</key>
-              <string>TestApp</string>
-              <key>CFBundleIdentifier</key>
-              <string>com.example.utilityapp</string>
-              <key>CFBundleName</key>
-              <string>實用小工具</string>
-              <key>CFBundlePackageType</key>
-              <string>APPL</string>
-              <key>CFBundleShortVersionString</key>
-              <string>1.0</string>
-              <key>CFBundleVersion</key>
-              <string>1</string>
-              <key>MinimumOSVersion</key>
-              <string>15.0</string>
-              <key>UILaunchScreen</key>
-              <dict/>
-          </dict>
-          EOF
-
-          # 4. 使用 clang 編譯 iOS ARM64 機器碼並連結 UIKit 框架
+          # 5. 編譯二進位檔並進行預簽名
           SDK_PATH=$(xcrun --sdk iphoneos --show-sdk-path)
           clang -target arm64-apple-ios15.0 -isysroot "$SDK_PATH" -framework UIKit -framework Foundation main.m -o Payload/TestApp.app/TestApp
-
-          # 5. 賦予執行權限並打包成 RealTool.ipa
           chmod +x Payload/TestApp.app/TestApp
-          zip -r RealTool.ipa Payload
+          codesign -s - --force --deep Payload/TestApp.app
+
+          # 6. 打包成 RealTool.ipa
+          zip -q -r RealTool.ipa Payload
 
       - name: Upload IPA
         uses: actions/upload-artifact@v4
