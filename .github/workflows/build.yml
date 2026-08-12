@@ -14,42 +14,58 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 2. 檢查檔案
+      # 2. 檢查檔案     
       - name: Check Project Files
         run: |
-          echo "Checking project files..."
+          echo "===== PROJECT STRUCTURE ====="
 
-          test -f Sources/Main.m
-          test -f Sources/AppDelegate.h
-          test -f Sources/AppDelegate.m
-          test -f Sources/HomeViewController.h
-          test -f Sources/HomeViewController.m
+          find . -maxdepth 4 -type f | sort
 
-          test -f Sources/Helpers/UIHelpers.h
-          test -f Sources/Helpers/UIHelpers.m
+          echo ""
+          echo "===== CHECKING FILES ====="
 
-          test -f Sources/Tools/CalculatorViewController.h
-          test -f Sources/Tools/CalculatorViewController.m
+          files=(
+            "Sources/Main.m"
+            "Sources/AppDelegate.h"
+            "Sources/AppDelegate.m"
+            "Sources/HomeViewController.h"
+            "Sources/HomeViewController.m"
+            "Sources/Helpers/UIHelpers.h"
+            "Sources/Helpers/UIHelpers.m"
+            "Sources/Tools/CalculatorViewController.h"
+            "Sources/Tools/CalculatorViewController.m"
+            "Sources/Tools/RandomViewController.h"
+            "Sources/Tools/RandomViewController.m"
+            "Sources/Tools/TimerViewController.h"
+            "Sources/Tools/TimerViewController.m"
+            "Sources/Tools/TextViewController.h"
+            "Sources/Tools/TextViewController.m"
+            "Sources/Tools/PasswordViewController.h"
+            "Sources/Tools/PasswordViewController.m"
+            "Sources/Tools/DeviceViewController.h"
+            "Sources/Tools/DeviceViewController.m"
+            "Sources/Tools/AboutViewController.h"
+            "Sources/Tools/AboutViewController.m"
+            "Info.plist"
+          )
 
-          test -f Sources/Tools/RandomViewController.h
-          test -f Sources/Tools/RandomViewController.m
+          failed=0
 
-          test -f Sources/Tools/TimerViewController.h
-          test -f Sources/Tools/TimerViewController.m
+          for file in "${files[@]}"; do
+            if [ -f "$file" ]; then
+              echo "✓ $file"
+            else
+              echo "✗ MISSING: $file"
+              failed=1
+            fi
+          done
 
-          test -f Sources/Tools/TextViewController.h
-          test -f Sources/Tools/TextViewController.m
+          echo ""
 
-          test -f Sources/Tools/PasswordViewController.h
-          test -f Sources/Tools/PasswordViewController.m
-
-          test -f Sources/Tools/DeviceViewController.h
-          test -f Sources/Tools/DeviceViewController.m
-
-          test -f Sources/Tools/AboutViewController.h
-          test -f Sources/Tools/AboutViewController.m
-
-          test -f Info.plist
+          if [ "$failed" -ne 0 ]; then
+            echo "ERROR: One or more required files are missing."
+            exit 1
+          fi
 
           echo "All required files found."
 
