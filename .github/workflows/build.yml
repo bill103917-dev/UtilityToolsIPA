@@ -1,174 +1,324 @@
 name: Build Utility IPA
-on: [workflow_dispatch]
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
 jobs:
   build:
+    name: Build Utility Tools IPA
     runs-on: macos-latest
+
     steps:
+
+      # ==========================================
+      # 1. 取得 Repository
+      # ==========================================
+
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build App Executable & Complete IPA
-        run: |
-          # 1. 清理與建立 iOS App 資料夾結構
-          rm -rf Payload RealTool.ipa
-          mkdir -p Payload/TestApp.app
 
-          # 2. 寫入完整且合規的 Info.plist（含 ESign 必填標籤）
-          cat << 'EOF' > Payload/TestApp.app/Info.plist
+      # ==========================================
+      # 2. 顯示環境
+      # ==========================================
+
+      - name: Show Build Environment
+        run: |
+          echo "macOS:"
+          sw_vers
+
+          echo ""
+          echo "Xcode:"
+          xcodebuild -version
+
+          echo ""
+          echo "SDK:"
+          xcrun --sdk iphoneos --show-sdk-version
+
+
+      # ==========================================
+      # 3. 清理舊檔案
+      # ==========================================
+
+      - name: Clean
+        run: |
+          rm -rf Payload
+          rm -rf UtilityTools.ipa
+          rm -rf build
+          rm -f main.o
+
+          mkdir -p Payload/UtilityTools.app
+
+
+      # ==========================================
+      # 4. 建立 Info.plist
+      # ==========================================
+
+      - name: Create Info.plist
+        run: |
+          cat > Payload/UtilityTools.app/Info.plist <<'PLIST'
           <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.plist">
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0">
           <dict>
+
               <key>CFBundleDevelopmentRegion</key>
               <string>zh_TW</string>
+
+              <key>CFBundleDisplayName</key>
+              <string>Utility Tools</string>
+
               <key>CFBundleExecutable</key>
-              <string>TestApp</string>
+              <string>UtilityTools</string>
+
               <key>CFBundleIdentifier</key>
-              <string>com.example.utilityapp</string>
+              <string>com.utilitytools.app</string>
+
               <key>CFBundleInfoDictionaryVersion</key>
               <string>6.0</string>
+
               <key>CFBundleName</key>
-              <string>實用小工具</string>
-              <key>CFBundleDisplayName</key>
-              <string>實用小工具</string>
+              <string>UtilityTools</string>
+
               <key>CFBundlePackageType</key>
               <string>APPL</string>
+
               <key>CFBundleShortVersionString</key>
               <string>1.0</string>
+
               <key>CFBundleVersion</key>
               <string>1</string>
-              <key>MinimumOSVersion</key>
-              <string>15.0</string>
+
               <key>CFBundleSupportedPlatforms</key>
               <array>
                   <string>iPhoneOS</string>
               </array>
+
+              <key>LSRequiresIPhoneOS</key>
+              <true/>
+
+              <key>MinimumOSVersion</key>
+              <string>15.0</string>
+
               <key>UIDeviceFamily</key>
               <array>
                   <integer>1</integer>
                   <integer>2</integer>
               </array>
+
               <key>UILaunchScreen</key>
               <dict/>
+
+              <key>UIRequiredDeviceCapabilities</key>
+              <array>
+                  <string>arm64</string>
+              </array>
+
           </dict>
-          EOF
+          </plist>
+          PLIST
 
-          # 3. 建立 PkgInfo 標籤檔
-          echo "APPL????" > Payload/TestApp.app/PkgInfo
 
-          # 4. 寫入 Objective-C 小工具程式碼
-          cat << 'EOF' > main.m
-          #import <UIKit/UIKit.h>
+      # ==========================================
+      # 5. 檢查 Info.plist
+      # ==========================================
 
-          @interface ViewController : UIViewController
-          @property (nonatomic, assign) NSInteger count;
-          @property (nonatomic, strong) UILabel *countLabel;
-          @end
+      - name: Validate Info.plist
+        run: |
+          plutil -lint Payload/UtilityTools.app/Info.plist
 
-          @implementation ViewController
-          - (void)viewDidLoad {
-              [super viewDidLoad];
-              self.title = @"隨機抽籤與計數器";
-              self.view.backgroundColor = [UIColor systemGroupedBackgroundColor];
-              
-              self.countLabel = [[UILabel alloc] init];
-              self.countLabel.text = @"目前計數：0";
-              self.countLabel.font = [UIFont systemFontOfSize:26 weight:UIFontWeightBold];
-              self.countLabel.textAlignment = NSTextAlignmentCenter;
-              
-              UIButton *plusBtn = [UIButton buttonWithType:UIButtonTypeSystem];
-              [plusBtn setTitle:@" ➕ 計數 +1 " forState:UIControlStateNormal];
-              plusBtn.titleLabel.font = [UIFont systemFontOfSize:20 weight:UIFontWeightSemibold];
-              plusBtn.backgroundColor = [UIColor systemBlueColor];
-              [plusBtn setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
-              plusBtn.layer.cornerRadius = 14;
-              [plusBtn addTarget:self action:@selector(addCount) forControlEvents:UIControlEventTouchUpInside];
-              
-              UIButton *resetBtn = [UIButton buttonWithType:UIButtonTypeSystem];
-              [resetBtn setTitle:@" 🔄 歸零 " forState:UIControlStateNormal];
-              resetBtn.titleLabel.font = [UIFont systemFontOfSize:18 weight:UIFontWeightMedium];
-              resetBtn.backgroundColor = [UIColor systemGray4Color];
-              [resetBtn setTitleColor:[UIColor labelColor] forState:UIControlStateNormal];
-              resetBtn.layer.cornerRadius = 14;
-              [resetBtn addTarget:self action:@selector(resetCount) forControlEvents:UIControlEventTouchUpInside];
-              
-              UIButton *diceBtn = [UIButton buttonWithType:UIButtonTypeSystem];
-              [diceBtn setTitle:@" 🎲 隨機抽數字 (1-100) " forState:UIControlStateNormal];
-              diceBtn.titleLabel.font = [UIFont systemFontOfSize:20 weight:UIFontWeightSemibold];
-              diceBtn.backgroundColor = [UIColor systemOrangeColor];
-              [diceBtn setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
-              diceBtn.layer.cornerRadius = 14;
-              [diceBtn addTarget:self action:@selector(rollDice) forControlEvents:UIControlEventTouchUpInside];
-              
-              UIStackView *stack = [[UIStackView alloc] initWithArrangedSubviews:@[self.countLabel, plusBtn, resetBtn, diceBtn]];
-              stack.axis = UILayoutConstraintAxisVertical;
-              stack.spacing = 16;
-              stack.distribution = UIStackViewDistributionFillEqually;
-              stack.translatesAutoresizingMaskIntoConstraints = NO;
-              
-              [self.view addSubview:stack];
-              
-              [NSLayoutConstraint activateConstraints:@[
-                  [stack.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor],
-                  [stack.centerYAnchor constraintEqualToAnchor:self.view.centerYAnchor],
-                  [stack.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:40],
-                  [stack.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-40],
-                  [stack.heightAnchor constraintEqualToConstant:280]
-              ]];
-          }
+          plutil -p Payload/UtilityTools.app/Info.plist
 
-          - (void)addCount {
-              self.count++;
-              self.countLabel.text = [NSString stringWithFormat:@"目前計數：%ld", (long)self.count];
-          }
 
-          - (void)resetCount {
-              self.count = 0;
-              self.countLabel.text = @"目前計數：0";
-          }
+      # ==========================================
+      # 6. 建立 PkgInfo
+      # ==========================================
 
-          - (void)rollDice {
-              NSInteger num = (arc4random() % 100) + 1;
-              NSString *msg = [NSString stringWithFormat:@"你抽到的數字是：%ld", (long)num];
-              UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"🎲 抽籤結果" message:msg preferredStyle:UIAlertControllerStyleAlert];
-              [alert addAction:[UIAlertAction actionWithTitle:@"太棒了" style:UIAlertActionStyleDefault handler:nil]];
-              [self presentViewController:alert animated:YES completion:nil];
-          }
-          @end
+      - name: Create PkgInfo
+        run: |
+          printf 'APPL????' > Payload/UtilityTools.app/PkgInfo
 
-          @interface AppDelegate : UIResponder <UIApplicationDelegate>
-          @property (strong, nonatomic) UIWindow *window;
-          @end
 
-          @implementation AppDelegate
-          - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
-              self.window = [[UIWindow alloc] initWithFrame:[UIScreen mainScreen].bounds];
-              ViewController *vc = [[ViewController alloc] init];
-              UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:vc];
-              self.window.rootViewController = nav;
-              [self.window makeKeyAndVisible];
-              return YES;
-          }
-          @end
+      # ==========================================
+      # 7. 檢查 main.m
+      # ==========================================
 
-          int main(int argc, char * argv[]) {
-              @autoreleasepool {
-                  return UIApplicationMain(argc, argv, nil, NSStringFromClass([AppDelegate class]));
-              }
-          }
-          EOF
+      - name: Check Source
+        run: |
+          test -f main.m
 
-          # 5. 編譯二進位檔並進行預簽名
+          echo "Source file:"
+          wc -l main.m
+
+
+      # ==========================================
+      # 8. 編譯 iOS App
+      # ==========================================
+
+      - name: Compile UtilityTools
+        run: |
           SDK_PATH=$(xcrun --sdk iphoneos --show-sdk-path)
-          clang -target arm64-apple-ios15.0 -isysroot "$SDK_PATH" -framework UIKit -framework Foundation main.m -o Payload/TestApp.app/TestApp
-          chmod +x Payload/TestApp.app/TestApp
-          codesign -s - --force --deep Payload/TestApp.app
 
-          # 6. 打包成 RealTool.ipa
-          zip -q -r RealTool.ipa Payload
+          echo "Using SDK:"
+          echo "$SDK_PATH"
+
+          xcrun clang \
+            -target arm64-apple-ios15.0 \
+            -isysroot "$SDK_PATH" \
+            -miphoneos-version-min=15.0 \
+            -fobjc-arc \
+            -O2 \
+            -Wall \
+            -Wextra \
+            main.m \
+            -framework UIKit \
+            -framework Foundation \
+            -o Payload/UtilityTools.app/UtilityTools
+
+
+      # ==========================================
+      # 9. 確認 Executable
+      # ==========================================
+
+      - name: Validate Executable
+        run: |
+          test -f Payload/UtilityTools.app/UtilityTools
+          test -x Payload/UtilityTools.app/UtilityTools
+
+          echo "Executable exists."
+
+          file Payload/UtilityTools.app/UtilityTools
+
+          xcrun otool \
+            -arch arm64 \
+            -l Payload/UtilityTools.app/UtilityTools | head -80
+
+
+      # ==========================================
+      # 10. 設定執行權限
+      # ==========================================
+
+      - name: Set Permissions
+        run: |
+          chmod 755 Payload/UtilityTools.app/UtilityTools
+          chmod 644 Payload/UtilityTools.app/Info.plist
+          chmod 644 Payload/UtilityTools.app/PkgInfo
+
+
+      # ==========================================
+      # 11. Ad Hoc / Placeholder Code Sign
+      # ==========================================
+
+      - name: Code Sign
+        run: |
+          codesign \
+            --force \
+            --deep \
+            --sign - \
+            Payload/UtilityTools.app
+
+          echo "Code signing completed."
+
+
+      # ==========================================
+      # 12. 驗證簽名
+      # ==========================================
+
+      - name: Verify Code Signature
+        run: |
+          codesign \
+            --verify \
+            --deep \
+            --strict \
+            --verbose=4 \
+            Payload/UtilityTools.app
+
+          echo "Signature verification completed."
+
+
+      # ==========================================
+      # 13. 顯示 App 結構
+      # ==========================================
+
+      - name: Inspect App Bundle
+        run: |
+          echo "===== APP STRUCTURE ====="
+
+          find Payload/UtilityTools.app \
+            -maxdepth 2 \
+            -print
+
+          echo ""
+          echo "===== INFO ====="
+
+          plutil -p \
+            Payload/UtilityTools.app/Info.plist
+
+
+      # ==========================================
+      # 14. 建立 IPA
+      # ==========================================
+
+      - name: Create IPA
+        run: |
+          rm -f UtilityTools.ipa
+
+          /usr/bin/ditto \
+            -c \
+            -k \
+            --sequesterRsrc \
+            --keepParent \
+            Payload \
+            UtilityTools.ipa
+
+          test -f UtilityTools.ipa
+
+          echo "IPA created."
+
+          ls -lh UtilityTools.ipa
+
+
+      # ==========================================
+      # 15. 驗證 IPA
+      # ==========================================
+
+      - name: Validate IPA
+        run: |
+          rm -rf ipa_check
+
+          mkdir ipa_check
+
+          unzip -q UtilityTools.ipa \
+            -d ipa_check
+
+          test -d ipa_check/Payload/UtilityTools.app
+
+          test -f ipa_check/Payload/UtilityTools.app/Info.plist
+
+          test -f ipa_check/Payload/UtilityTools.app/UtilityTools
+
+          echo ""
+          echo "===== IPA CONTENT ====="
+
+          find ipa_check/Payload/UtilityTools.app \
+            -maxdepth 1 \
+            -print
+
+          echo ""
+          echo "IPA validation successful."
+
+
+      # ==========================================
+      # 16. 上傳 IPA
+      # ==========================================
 
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
-          name: real-tool-ipa
-          path: RealTool.ipa
+          name: UtilityTools-IPA
+          path: UtilityTools.ipa
+          if-no-files-found: error
+          retention-days: 30
