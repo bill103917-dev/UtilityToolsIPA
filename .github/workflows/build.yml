@@ -3,216 +3,136 @@ name: Build Utility IPA
 on:
   workflow_dispatch:
 
-permissions:
-  contents: read
-
 jobs:
   build:
-    name: Build Utility Tools IPA
+    name: Compile UtilityTools
     runs-on: macos-latest
 
     steps:
 
-      # ==========================================
-      # 1. 取得 Repository
-      # ==========================================
-
+      # 1. 下載 Repository
       - name: Checkout
         uses: actions/checkout@v4
 
-
-      # ==========================================
-      # 2. 顯示環境
-      # ==========================================
-
-      - name: Show Build Environment
+      # 2. 檢查檔案
+      - name: Check Project Files
         run: |
-          echo "macOS:"
-          sw_vers
+          echo "Checking project files..."
 
-          echo ""
-          echo "Xcode:"
-          xcodebuild -version
+          test -f Sources/Main.m
+          test -f Sources/AppDelegate.h
+          test -f Sources/AppDelegate.m
+          test -f Sources/HomeViewController.h
+          test -f Sources/HomeViewController.m
 
-          echo ""
-          echo "SDK:"
-          xcrun --sdk iphoneos --show-sdk-version
+          test -f Sources/Helpers/UIHelpers.h
+          test -f Sources/Helpers/UIHelpers.m
 
+          test -f Sources/Tools/CalculatorViewController.h
+          test -f Sources/Tools/CalculatorViewController.m
 
-      # ==========================================
+          test -f Sources/Tools/RandomViewController.h
+          test -f Sources/Tools/RandomViewController.m
+
+          test -f Sources/Tools/TimerViewController.h
+          test -f Sources/Tools/TimerViewController.m
+
+          test -f Sources/Tools/TextViewController.h
+          test -f Sources/Tools/TextViewController.m
+
+          test -f Sources/Tools/PasswordViewController.h
+          test -f Sources/Tools/PasswordViewController.m
+
+          test -f Sources/Tools/DeviceViewController.h
+          test -f Sources/Tools/DeviceViewController.m
+
+          test -f Sources/Tools/AboutViewController.h
+          test -f Sources/Tools/AboutViewController.m
+
+          test -f Info.plist
+
+          echo "All required files found."
+
       # 3. 清理舊檔案
-      # ==========================================
-
-      - name: Clean
+      - name: Clean Build
         run: |
-          rm -rf Payload
-          rm -rf UtilityTools.ipa
           rm -rf build
-          rm -f main.o
+          rm -rf Payload
+          rm -f UtilityTools.ipa
 
-          mkdir -p Payload/UtilityTools.app
+          mkdir -p build
+          mkdir -p Payload
 
-
-      # ==========================================
-      # 4. 建立 Info.plist
-      # ==========================================
-
-      - name: Create Info.plist
-        run: |
-          cat > Payload/UtilityTools.app/Info.plist <<'PLIST'
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-
-              <key>CFBundleDevelopmentRegion</key>
-              <string>zh_TW</string>
-
-              <key>CFBundleDisplayName</key>
-              <string>Utility Tools</string>
-
-              <key>CFBundleExecutable</key>
-              <string>UtilityTools</string>
-
-              <key>CFBundleIdentifier</key>
-              <string>com.utilitytools.app</string>
-
-              <key>CFBundleInfoDictionaryVersion</key>
-              <string>6.0</string>
-
-              <key>CFBundleName</key>
-              <string>UtilityTools</string>
-
-              <key>CFBundlePackageType</key>
-              <string>APPL</string>
-
-              <key>CFBundleShortVersionString</key>
-              <string>1.0</string>
-
-              <key>CFBundleVersion</key>
-              <string>1</string>
-
-              <key>CFBundleSupportedPlatforms</key>
-              <array>
-                  <string>iPhoneOS</string>
-              </array>
-
-              <key>LSRequiresIPhoneOS</key>
-              <true/>
-
-              <key>MinimumOSVersion</key>
-              <string>15.0</string>
-
-              <key>UIDeviceFamily</key>
-              <array>
-                  <integer>1</integer>
-                  <integer>2</integer>
-              </array>
-
-              <key>UILaunchScreen</key>
-              <dict/>
-
-              <key>UIRequiredDeviceCapabilities</key>
-              <array>
-                  <string>arm64</string>
-              </array>
-
-          </dict>
-          </plist>
-          PLIST
-
-
-      # ==========================================
-      # 5. 檢查 Info.plist
-      # ==========================================
-
-      - name: Validate Info.plist
-        run: |
-          plutil -lint Payload/UtilityTools.app/Info.plist
-
-          plutil -p Payload/UtilityTools.app/Info.plist
-
-
-      # ==========================================
-      # 6. 建立 PkgInfo
-      # ==========================================
-
-      - name: Create PkgInfo
-        run: |
-          printf 'APPL????' > Payload/UtilityTools.app/PkgInfo
-
-
-      # ==========================================
-      # 7. 檢查 main.m
-      # ==========================================
-
-      - name: Check Source
-        run: |
-          test -f main.m
-
-          echo "Source file:"
-          wc -l main.m
-
-
-      # ==========================================
-      # 8. 編譯 iOS App
-      # ==========================================
-
+      # 4. 編譯 Objective-C
       - name: Compile UtilityTools
         run: |
           SDK_PATH=$(xcrun --sdk iphoneos --show-sdk-path)
 
-          echo "Using SDK:"
+          echo "iOS SDK:"
           echo "$SDK_PATH"
 
-          xcrun clang \
+          clang \
             -target arm64-apple-ios15.0 \
             -isysroot "$SDK_PATH" \
-            -miphoneos-version-min=15.0 \
             -fobjc-arc \
-            -O2 \
-            -Wall \
-            -Wextra \
-            main.m \
             -framework UIKit \
             -framework Foundation \
-            -o Payload/UtilityTools.app/UtilityTools
+            -framework QuartzCore \
+            Sources/Main.m \
+            Sources/AppDelegate.m \
+            Sources/HomeViewController.m \
+            Sources/Tools/CalculatorViewController.m \
+            Sources/Tools/RandomViewController.m \
+            Sources/Tools/TimerViewController.m \
+            Sources/Tools/TextViewController.m \
+            Sources/Tools/PasswordViewController.m \
+            Sources/Tools/DeviceViewController.m \
+            Sources/Tools/AboutViewController.m \
+            Sources/Helpers/UIHelpers.m \
+            -I Sources \
+            -I Sources/Helpers \
+            -I Sources/Tools \
+            -o build/UtilityTools
 
+          chmod +x build/UtilityTools
 
-      # ==========================================
-      # 9. 確認 Executable
-      # ==========================================
+          echo "Compilation successful."
 
-      - name: Validate Executable
+      # 5. 建立 .app
+      - name: Create App Bundle
         run: |
-          test -f Payload/UtilityTools.app/UtilityTools
-          test -x Payload/UtilityTools.app/UtilityTools
+          mkdir -p Payload/UtilityTools.app
 
-          echo "Executable exists."
+          cp build/UtilityTools \
+            Payload/UtilityTools.app/UtilityTools
 
-          file Payload/UtilityTools.app/UtilityTools
+          cp Info.plist \
+            Payload/UtilityTools.app/Info.plist
 
-          xcrun otool \
-            -arch arm64 \
-            -l Payload/UtilityTools.app/UtilityTools | head -80
+          printf 'APPL????' \
+            > Payload/UtilityTools.app/PkgInfo
 
+          echo "App bundle created."
 
-      # ==========================================
-      # 10. 設定執行權限
-      # ==========================================
-
-      - name: Set Permissions
+      # 6. 複製 App Icon
+      - name: Copy App Icon
         run: |
-          chmod 755 Payload/UtilityTools.app/UtilityTools
-          chmod 644 Payload/UtilityTools.app/Info.plist
-          chmod 644 Payload/UtilityTools.app/PkgInfo
+          if [ -d "AppIcon.appiconset" ]; then
 
+            cp -R AppIcon.appiconset \
+              Payload/UtilityTools.app/
 
-      # ==========================================
-      # 11. Ad Hoc / Placeholder Code Sign
-      # ==========================================
+            echo "App icon copied."
 
-      - name: Code Sign
+          else
+
+            echo "No AppIcon.appiconset found."
+            echo "Continuing without custom icon."
+
+          fi
+
+      # 7. 程式碼簽名
+      - name: Sign Application
         run: |
           codesign \
             --force \
@@ -220,105 +140,48 @@ jobs:
             --sign - \
             Payload/UtilityTools.app
 
-          echo "Code signing completed."
-
-
-      # ==========================================
-      # 12. 驗證簽名
-      # ==========================================
-
-      - name: Verify Code Signature
-        run: |
           codesign \
             --verify \
             --deep \
             --strict \
-            --verbose=4 \
             Payload/UtilityTools.app
 
-          echo "Signature verification completed."
+          echo "Code signing successful."
 
-
-      # ==========================================
-      # 13. 顯示 App 結構
-      # ==========================================
-
-      - name: Inspect App Bundle
-        run: |
-          echo "===== APP STRUCTURE ====="
-
-          find Payload/UtilityTools.app \
-            -maxdepth 2 \
-            -print
-
-          echo ""
-          echo "===== INFO ====="
-
-          plutil -p \
-            Payload/UtilityTools.app/Info.plist
-
-
-      # ==========================================
-      # 14. 建立 IPA
-      # ==========================================
-
+      # 8. 建立 IPA
       - name: Create IPA
         run: |
-          rm -f UtilityTools.ipa
+          cd Payload
 
-          /usr/bin/ditto \
-            -c \
-            -k \
-            --sequesterRsrc \
-            --keepParent \
-            Payload \
-            UtilityTools.ipa
+          zip \
+            -r \
+            -q \
+            ../UtilityTools.ipa \
+            UtilityTools.app
 
+          cd ..
+
+          echo "IPA created successfully."
+
+      # 9. 檢查 IPA
+      - name: Verify IPA
+        run: |
           test -f UtilityTools.ipa
 
-          echo "IPA created."
-
+          echo "IPA information:"
           ls -lh UtilityTools.ipa
 
-
-      # ==========================================
-      # 15. 驗證 IPA
-      # ==========================================
-
-      - name: Validate IPA
-        run: |
-          rm -rf ipa_check
-
-          mkdir ipa_check
-
-          unzip -q UtilityTools.ipa \
-            -d ipa_check
-
-          test -d ipa_check/Payload/UtilityTools.app
-
-          test -f ipa_check/Payload/UtilityTools.app/Info.plist
-
-          test -f ipa_check/Payload/UtilityTools.app/UtilityTools
+          echo ""
+          echo "IPA contents:"
+          unzip -l UtilityTools.ipa
 
           echo ""
-          echo "===== IPA CONTENT ====="
+          echo "IPA verification successful."
 
-          find ipa_check/Payload/UtilityTools.app \
-            -maxdepth 1 \
-            -print
-
-          echo ""
-          echo "IPA validation successful."
-
-
-      # ==========================================
-      # 16. 上傳 IPA
-      # ==========================================
-
+      # 10. 上傳 IPA
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
           name: UtilityTools-IPA
           path: UtilityTools.ipa
           if-no-files-found: error
-          retention-days: 30
