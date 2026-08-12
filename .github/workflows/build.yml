@@ -94,6 +94,7 @@ jobs:
             -framework UIKit \
             -framework Foundation \
             -framework QuartzCore \
+            -framework CoreGraphics \
             Sources/Main.m \
             Sources/AppDelegate.m \
             Sources/HomeViewController.m \
