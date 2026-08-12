@@ -10,16 +10,18 @@ jobs:
 
     steps:
 
-      # 1. 下載 Repository
+      # 1. Checkout
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 2. 檢查檔案     
+      # 2. 檢查專案檔案
       - name: Check Project Files
+        shell: bash
         run: |
-          echo "===== PROJECT STRUCTURE ====="
+          set -e
 
-          find . -maxdepth 4 -type f | sort
+          echo "===== PROJECT STRUCTURE ====="
+          find Sources AppIcon -maxdepth 4 -type f 2>/dev/null | sort || true
 
           echo ""
           echo "===== CHECKING FILES ====="
@@ -30,22 +32,31 @@ jobs:
             "Sources/AppDelegate.m"
             "Sources/HomeViewController.h"
             "Sources/HomeViewController.m"
+
             "Sources/Helpers/UIHelpers.h"
             "Sources/Helpers/UIHelpers.m"
+
             "Sources/Tools/CalculatorViewController.h"
             "Sources/Tools/CalculatorViewController.m"
+
             "Sources/Tools/RandomViewController.h"
             "Sources/Tools/RandomViewController.m"
+
             "Sources/Tools/TimerViewController.h"
             "Sources/Tools/TimerViewController.m"
+
             "Sources/Tools/TextViewController.h"
             "Sources/Tools/TextViewController.m"
+
             "Sources/Tools/PasswordViewController.h"
             "Sources/Tools/PasswordViewController.m"
+
             "Sources/Tools/DeviceViewController.h"
             "Sources/Tools/DeviceViewController.m"
+
             "Sources/Tools/AboutViewController.h"
             "Sources/Tools/AboutViewController.m"
+
             "Info.plist"
           )
 
@@ -60,37 +71,58 @@ jobs:
             fi
           done
 
-          echo ""
-
           if [ "$failed" -ne 0 ]; then
-            echo "ERROR: One or more required files are missing."
+            echo ""
+            echo "ERROR: Required files are missing."
             exit 1
           fi
 
+          echo ""
           echo "All required files found."
 
-      # 3. 清理舊檔案
+      # 3. 清理
       - name: Clean Build
+        shell: bash
         run: |
+          set -e
+
           rm -rf build
           rm -rf Payload
           rm -f UtilityTools.ipa
 
           mkdir -p build
-          mkdir -p Payload
+          mkdir -p Payload/UtilityTools.app
 
-      # 4. 編譯 Objective-C
-      - name: Compile UtilityTools
+          echo "Build folders created."
+
+      # 4. 取得 iOS SDK
+      - name: Check iOS SDK
+        shell: bash
         run: |
+          set -e
+
           SDK_PATH=$(xcrun --sdk iphoneos --show-sdk-path)
 
           echo "iOS SDK:"
           echo "$SDK_PATH"
 
+          xcrun --sdk iphoneos --show-sdk-version
+
+      # 5. 編譯
+      - name: Compile UtilityTools
+        shell: bash
+        run: |
+          set -e
+
+          SDK_PATH=$(xcrun --sdk iphoneos --show-sdk-path)
+
+          echo "Compiling UtilityTools..."
+
           clang \
             -target arm64-apple-ios15.0 \
             -isysroot "$SDK_PATH" \
             -fobjc-arc \
+            -fmodules \
             -framework UIKit \
             -framework Foundation \
             -framework QuartzCore \
@@ -113,92 +145,135 @@ jobs:
 
           chmod +x build/UtilityTools
 
+          echo ""
           echo "Compilation successful."
 
-      # 5. 建立 .app
+      # 6. 建立 App Bundle
       - name: Create App Bundle
+        shell: bash
         run: |
-          mkdir -p Payload/UtilityTools.app
+          set -e
 
-          cp build/UtilityTools \
+          APP="Payload/UtilityTools.app"
+
+          cp build/UtilityTools "$APP/UtilityTools"
+          cp Info.plist "$APP/Info.plist"
+
+          printf 'APPL????' > "$APP/PkgInfo"
+
+          echo "App bundle:"
+          find "$APP" -maxdepth 2 -type f | sort
+
+      # 7. 檢查 Mach-O
+      - name: Verify Executable
+        shell: bash
+        run: |
+          set -e
+
+          file Payload/UtilityTools.app/UtilityTools
+
+          xcrun --sdk iphoneos \
+            otool -hv \
             Payload/UtilityTools.app/UtilityTools
 
-          cp Info.plist \
-            Payload/UtilityTools.app/Info.plist
+          echo "Executable verification successful."
 
-          printf 'APPL????' \
-            > Payload/UtilityTools.app/PkgInfo
-
-          echo "App bundle created."
-
-      # 6. 複製 App Icon
-      - name: Copy App Icon
+      # 8. 處理 App Icon
+      - name: Prepare App Icon
+        shell: bash
         run: |
-          if [ -d "AppIcon.appiconset" ]; then
+          set -e
 
+          if [ -d "AppIcon.appiconset" ]; then
             cp -R AppIcon.appiconset \
               Payload/UtilityTools.app/
 
-            echo "App icon copied."
+            echo "AppIcon.appiconset copied."
+
+          elif [ -f "AppIcon/AppIcon.jpeg" ]; then
+            echo "AppIcon.jpeg found."
+            echo "Custom icon will be configured in a later version."
 
           else
-
-            echo "No AppIcon.appiconset found."
-            echo "Continuing without custom icon."
-
+            echo "No custom App Icon found."
           fi
 
-      # 7. 程式碼簽名
-      - name: Sign Application
+      # 9. 檢查 Info.plist
+      - name: Verify Info.plist
+        shell: bash
         run: |
-          codesign \
-            --force \
-            --deep \
-            --sign - \
-            Payload/UtilityTools.app
+          set -e
 
-          codesign \
-            --verify \
-            --deep \
-            --strict \
-            Payload/UtilityTools.app
+          plutil -lint \
+            Payload/UtilityTools.app/Info.plist
 
-          echo "Code signing successful."
+          echo ""
+          echo "Bundle information:"
 
-      # 8. 建立 IPA
-      - name: Create IPA
+          /usr/libexec/PlistBuddy \
+            -c "Print :CFBundleIdentifier" \
+            Payload/UtilityTools.app/Info.plist
+
+          /usr/libexec/PlistBuddy \
+            -c "Print :CFBundleExecutable" \
+            Payload/UtilityTools.app/Info.plist
+
+          echo ""
+          echo "Info.plist verification successful."
+
+      # 10. 移除舊簽名資訊
+      - name: Remove Existing Signature
+        shell: bash
         run: |
+          set -e
+
+          rm -rf \
+            Payload/UtilityTools.app/_CodeSignature
+
+          echo "Existing signature information removed."
+
+      # 11. 建立未簽名 IPA
+      - name: Create Unsigned IPA
+        shell: bash
+        run: |
+          set -e
+
           cd Payload
 
           zip \
             -r \
             -q \
-            ../UtilityTools.ipa \
+            ../UtilityTools-unsigned.ipa \
             UtilityTools.app
 
           cd ..
 
-          echo "IPA created successfully."
+          echo "Unsigned IPA created."
 
-      # 9. 檢查 IPA
+      # 12. 檢查 IPA
       - name: Verify IPA
+        shell: bash
         run: |
-          test -f UtilityTools.ipa
+          set -e
 
-          echo "IPA information:"
-          ls -lh UtilityTools.ipa
+          test -f UtilityTools-unsigned.ipa
+
+          echo "===== IPA INFORMATION ====="
+
+          ls -lh UtilityTools-unsigned.ipa
 
           echo ""
-          echo "IPA contents:"
-          unzip -l UtilityTools.ipa
+          echo "===== IPA CONTENTS ====="
+
+          unzip -l UtilityTools-unsigned.ipa
 
           echo ""
           echo "IPA verification successful."
 
-      # 10. 上傳 IPA
+      # 13. 上傳 IPA
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
-          name: UtilityTools-IPA
-          path: UtilityTools.ipa
+          name: UtilityTools-IPA-Unsigned
+          path: UtilityTools-unsigned.ipa
           if-no-files-found: error
