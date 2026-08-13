@@ -395,13 +395,13 @@ jobs:
           # ========================================================
 
           cat > build/Assets.xcassets/Contents.json <<'EOF'
-{
-  "info" : {
-    "author" : "xcode",
-    "version" : 1
-  }
-}
-EOF
+          {
+            "info" : {
+              "author" : "xcode",
+              "version" : 1
+            }
+          }
+          EOF
 
 
           # ========================================================
@@ -409,31 +409,27 @@ EOF
           # ========================================================
 
           cat > build/Assets.xcassets/AppIcon.appiconset/Contents.json <<'EOF'
-{
-  "images" : [
-    {
-      "filename" : "AppIcon.png",
-      "idiom" : "ios-marketing",
-      "scale" : "1x",
-      "size" : "1024x1024"
-    }
-  ],
-  "info" : {
-    "author" : "xcode",
-    "version" : 1
-  }
-}
-EOF
+          {
+            "images" : [
+              {
+                "filename" : "AppIcon.png",
+                "idiom" : "ios-marketing",
+                "scale" : "1x",
+                "size" : "1024x1024"
+              }
+            ],
+            "info" : {
+              "author" : "xcode",
+              "version" : 1
+            }
+          }
+          EOF
 
           echo "✓ Assets.xcassets created."
 
 
           # ========================================================
           # 編譯 Assets.car
-          #
-          # 重要：
-          # actool 要求 App Icon 編譯時提供
-          # --output-partial-info-plist
           # ========================================================
 
           echo ""
@@ -533,26 +529,21 @@ EOF
             -c "Add :CFBundleIcons dict" \
             "$PLIST"
 
-
           /usr/libexec/PlistBuddy \
             -c "Add :CFBundleIcons:CFBundlePrimaryIcon dict" \
             "$PLIST"
-
 
           /usr/libexec/PlistBuddy \
             -c "Add :CFBundleIcons:CFBundlePrimaryIcon:CFBundleIconFiles array" \
             "$PLIST"
 
-
           /usr/libexec/PlistBuddy \
             -c "Add :CFBundleIcons:CFBundlePrimaryIcon:CFBundleIconFiles:0 string AppIcon" \
             "$PLIST"
 
-
           /usr/libexec/PlistBuddy \
             -c "Add :CFBundleIcons:CFBundlePrimaryIcon:CFBundleIconName string AppIcon" \
             "$PLIST"
-
 
           echo ""
           echo "✓ Info.plist configured."
