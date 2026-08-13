@@ -32,13 +32,17 @@
 
     self.resultLabel =
         MakeLabel(@"點擊按鈕產生",
-                  20,
+                  18,
                   UIFontWeightSemibold);
 
     self.resultLabel.textAlignment =
         NSTextAlignmentCenter;
 
+    // 允許長字串換行
     self.resultLabel.numberOfLines = 0;
+
+    self.resultLabel.lineBreakMode =
+        NSLineBreakByCharWrapping;
 
     self.resultLabel.backgroundColor =
         [UIColor secondarySystemBackgroundColor];
@@ -149,6 +153,8 @@
     [self.view addSubview:copyButton];
 
     [NSLayoutConstraint activateConstraints:@[
+
+        // 標題
         [title.topAnchor
          constraintEqualToAnchor:
          self.view.safeAreaLayoutGuide.topAnchor
@@ -164,10 +170,11 @@
          self.view.trailingAnchor
          constant:-20],
 
+        // 隨機字串結果區
         [self.resultLabel.topAnchor
          constraintEqualToAnchor:
          title.bottomAnchor
-         constant:30],
+         constant:25],
 
         [self.resultLabel.leadingAnchor
          constraintEqualToAnchor:
@@ -179,13 +186,15 @@
          self.view.trailingAnchor
          constant:-20],
 
+        // 固定結果區高度，避免長字串把整個畫面往下推
         [self.resultLabel.heightAnchor
-         constraintGreaterThanOrEqualToConstant:70],
+         constraintEqualToConstant:90],
 
+        // 長度文字
         [self.lengthLabel.topAnchor
          constraintEqualToAnchor:
          self.resultLabel.bottomAnchor
-         constant:25],
+         constant:20],
 
         [self.lengthLabel.leadingAnchor
          constraintEqualToAnchor:
@@ -197,6 +206,7 @@
          self.view.trailingAnchor
          constant:-25],
 
+        // Slider
         [self.lengthSlider.topAnchor
          constraintEqualToAnchor:
          self.lengthLabel.bottomAnchor
@@ -212,10 +222,11 @@
          self.view.trailingAnchor
          constant:-25],
 
+        // 數字開關
         [numberRow.topAnchor
          constraintEqualToAnchor:
          self.lengthSlider.bottomAnchor
-         constant:20],
+         constant:18],
 
         [numberRow.leadingAnchor
          constraintEqualToAnchor:
@@ -227,10 +238,11 @@
          self.view.trailingAnchor
          constant:-25],
 
+        // 特殊符號開關
         [symbolRow.topAnchor
          constraintEqualToAnchor:
          numberRow.bottomAnchor
-         constant:15],
+         constant:12],
 
         [symbolRow.leadingAnchor
          constraintEqualToAnchor:
@@ -242,10 +254,11 @@
          self.view.trailingAnchor
          constant:-25],
 
+        // 產生按鈕
         [generateButton.topAnchor
          constraintEqualToAnchor:
          symbolRow.bottomAnchor
-         constant:25],
+         constant:20],
 
         [generateButton.leadingAnchor
          constraintEqualToAnchor:
@@ -258,12 +271,13 @@
          constant:-25],
 
         [generateButton.heightAnchor
-         constraintEqualToConstant:55],
+         constraintEqualToConstant:52],
 
+        // 複製按鈕
         [copyButton.topAnchor
          constraintEqualToAnchor:
          generateButton.bottomAnchor
-         constant:12],
+         constant:10],
 
         [copyButton.leadingAnchor
          constraintEqualToAnchor:
@@ -274,7 +288,13 @@
          generateButton.trailingAnchor],
 
         [copyButton.heightAnchor
-         constraintEqualToConstant:55]
+         constraintEqualToConstant:52],
+
+        // 確保複製按鈕不會跑出 Safe Area
+        [copyButton.bottomAnchor
+         constraintLessThanOrEqualToAnchor:
+         self.view.safeAreaLayoutGuide.bottomAnchor
+         constant:-10]
     ]];
 }
 
@@ -436,6 +456,7 @@
     ]];
 
     toast.alpha = 0;
+
     toast.transform =
         CGAffineTransformMakeScale(0.7, 0.7);
 
@@ -443,6 +464,7 @@
                      animations:^{
 
         toast.alpha = 1;
+
         toast.transform =
             CGAffineTransformIdentity;
 
