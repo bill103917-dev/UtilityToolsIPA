@@ -1,5 +1,6 @@
 #import "RandomViewController.h"
 #import "../Helpers/UIHelpers.h"
+#import <stdlib.h>
 
 @interface RandomViewController ()
 
@@ -7,7 +8,7 @@
 @property (nonatomic, strong) UITextField *minField;
 @property (nonatomic, strong) UITextField *maxField;
 
-@property (nonatomic, strong) UIButton *copyButton;
+@property (nonatomic, strong) UIButton *copyResultButton;
 @property (nonatomic, strong) NSString *currentResult;
 
 @end
@@ -20,18 +21,34 @@
     self.title = @"隨機數字";
     self.view.backgroundColor = AppBackgroundColor();
 
+    // ============================================================
+    // 標題
+    // ============================================================
+
     UILabel *title =
         MakeLabel(@"🎲 隨機數字產生器",
                   28,
                   UIFontWeightBold);
 
-    title.textAlignment = NSTextAlignmentCenter;
+    title.textAlignment =
+        NSTextAlignmentCenter;
 
-    self.minField = [[UITextField alloc] init];
-    self.maxField = [[UITextField alloc] init];
 
-    self.minField.placeholder = @"最小值";
-    self.maxField.placeholder = @"最大值";
+    // ============================================================
+    // 最小值 / 最大值
+    // ============================================================
+
+    self.minField =
+        [[UITextField alloc] init];
+
+    self.maxField =
+        [[UITextField alloc] init];
+
+    self.minField.placeholder =
+        @"最小值";
+
+    self.maxField.placeholder =
+        @"最大值";
 
     self.minField.borderStyle =
         UITextBorderStyleRoundedRect;
@@ -51,8 +68,16 @@
     self.maxField.font =
         [UIFont systemFontOfSize:18];
 
-    self.minField.translatesAutoresizingMaskIntoConstraints = NO;
-    self.maxField.translatesAutoresizingMaskIntoConstraints = NO;
+    self.minField.translatesAutoresizingMaskIntoConstraints =
+        NO;
+
+    self.maxField.translatesAutoresizingMaskIntoConstraints =
+        NO;
+
+
+    // ============================================================
+    // 結果
+    // ============================================================
 
     self.resultLabel =
         MakeLabel(@"結果：—",
@@ -62,6 +87,11 @@
     self.resultLabel.textAlignment =
         NSTextAlignmentCenter;
 
+
+    // ============================================================
+    // 產生按鈕
+    // ============================================================
+
     UIButton *generateButton =
         MakeButton(@"🎲 產生隨機數字",
                    [UIColor systemPurpleColor]);
@@ -70,28 +100,51 @@
                        action:@selector(generateRandomNumber)
              forControlEvents:UIControlEventTouchUpInside];
 
-    // MARK: - 複製結果按鈕
 
-    self.copyButton =
+    // ============================================================
+    // 複製結果按鈕
+    // ============================================================
+
+    self.copyResultButton =
         MakeButton(@"📋 複製結果",
                    [UIColor systemBlueColor]);
 
-    [self.copyButton addTarget:self
-                        action:@selector(copyResult)
-              forControlEvents:UIControlEventTouchUpInside];
+    [self.copyResultButton addTarget:self
+                              action:@selector(copyResult)
+                    forControlEvents:UIControlEventTouchUpInside];
 
-    // 一開始沒有結果，所以不能複製
-    self.copyButton.enabled = NO;
-    self.copyButton.alpha = 0.45;
+    // 一開始沒有結果
+    self.copyResultButton.enabled = NO;
+    self.copyResultButton.alpha = 0.45;
+
+
+    // ============================================================
+    // 加入畫面
+    // ============================================================
 
     [self.view addSubview:title];
+
     [self.view addSubview:self.minField];
+
     [self.view addSubview:self.maxField];
+
     [self.view addSubview:self.resultLabel];
+
     [self.view addSubview:generateButton];
-    [self.view addSubview:self.copyButton];
+
+    [self.view addSubview:self.copyResultButton];
+
+
+    // ============================================================
+    // Auto Layout
+    // ============================================================
 
     [NSLayoutConstraint activateConstraints:@[
+
+        // --------------------------------------------------------
+        // Title
+        // --------------------------------------------------------
+
         [title.topAnchor
          constraintEqualToAnchor:
          self.view.safeAreaLayoutGuide.topAnchor
@@ -106,6 +159,11 @@
          constraintEqualToAnchor:
          self.view.trailingAnchor
          constant:-20],
+
+
+        // --------------------------------------------------------
+        // Min Field
+        // --------------------------------------------------------
 
         [self.minField.topAnchor
          constraintEqualToAnchor:
@@ -125,6 +183,11 @@
         [self.minField.heightAnchor
          constraintEqualToConstant:52],
 
+
+        // --------------------------------------------------------
+        // Max Field
+        // --------------------------------------------------------
+
         [self.maxField.topAnchor
          constraintEqualToAnchor:
          title.bottomAnchor
@@ -143,6 +206,11 @@
         [self.maxField.heightAnchor
          constraintEqualToConstant:52],
 
+
+        // --------------------------------------------------------
+        // Result
+        // --------------------------------------------------------
+
         [self.resultLabel.topAnchor
          constraintEqualToAnchor:
          self.minField.bottomAnchor
@@ -157,6 +225,11 @@
          constraintEqualToAnchor:
          self.view.trailingAnchor
          constant:-20],
+
+
+        // --------------------------------------------------------
+        // Generate Button
+        // --------------------------------------------------------
 
         [generateButton.topAnchor
          constraintEqualToAnchor:
@@ -176,52 +249,75 @@
         [generateButton.heightAnchor
          constraintEqualToConstant:60],
 
-        // 複製按鈕
-        [self.copyButton.topAnchor
+
+        // --------------------------------------------------------
+        // Copy Result Button
+        // --------------------------------------------------------
+
+        [self.copyResultButton.topAnchor
          constraintEqualToAnchor:
          generateButton.bottomAnchor
          constant:15],
 
-        [self.copyButton.leadingAnchor
+        [self.copyResultButton.leadingAnchor
          constraintEqualToAnchor:
          self.view.leadingAnchor
          constant:25],
 
-        [self.copyButton.trailingAnchor
+        [self.copyResultButton.trailingAnchor
          constraintEqualToAnchor:
          self.view.trailingAnchor
          constant:-25],
 
-        [self.copyButton.heightAnchor
+        [self.copyResultButton.heightAnchor
          constraintEqualToConstant:52]
+
     ]];
 }
 
-#pragma mark - Generate
+
+#pragma mark - Generate Random Number
 
 - (void)generateRandomNumber {
 
+    // 收起鍵盤
     [self.view endEditing:YES];
+
+
+    // ============================================================
+    // 取得輸入
+    // ============================================================
 
     NSString *minText =
         [self.minField.text
          stringByTrimmingCharactersInSet:
-             [NSCharacterSet whitespaceAndNewlineCharacterSet]];
+         [NSCharacterSet whitespaceAndNewlineCharacterSet]];
 
     NSString *maxText =
         [self.maxField.text
          stringByTrimmingCharactersInSet:
-             [NSCharacterSet whitespaceAndNewlineCharacterSet]];
+         [NSCharacterSet whitespaceAndNewlineCharacterSet]];
+
+
+    // ============================================================
+    // 檢查是否輸入
+    // ============================================================
 
     if (minText.length == 0 ||
         maxText.length == 0) {
 
-        self.resultLabel.text = @"請輸入完整範圍";
+        self.resultLabel.text =
+            @"請輸入完整範圍";
 
         [self clearResult];
 
         return;
     }
+
+
+    // ============================================================
+    // Scanner
+    // ============================================================
 
     NSScanner *minScanner =
         [NSScanner scannerWithString:minText];
@@ -232,6 +328,7 @@
     NSInteger minValue = 0;
     NSInteger maxValue = 0;
 
+
     BOOL minValid =
         [minScanner scanInteger:&minValue] &&
         minScanner.isAtEnd;
@@ -240,7 +337,13 @@
         [maxScanner scanInteger:&maxValue] &&
         maxScanner.isAtEnd;
 
-    if (!minValid || !maxValid) {
+
+    // ============================================================
+    // 檢查整數
+    // ============================================================
+
+    if (!minValid ||
+        !maxValid) {
 
         self.resultLabel.text =
             @"只能輸入整數";
@@ -249,6 +352,11 @@
 
         return;
     }
+
+
+    // ============================================================
+    // 檢查大小
+    // ============================================================
 
     if (maxValue < minValue) {
 
@@ -260,11 +368,18 @@
         return;
     }
 
+
+    // ============================================================
+    // 計算範圍
+    // ============================================================
+
     unsigned long long range =
         (unsigned long long)maxValue -
         (unsigned long long)minValue +
         1ULL;
 
+
+    // arc4random_uniform 使用 uint32_t
     if (range == 0 ||
         range > UINT32_MAX) {
 
@@ -276,31 +391,59 @@
         return;
     }
 
+
+    // ============================================================
+    // 產生隨機數字
+    // ============================================================
+
     uint32_t randomValue =
         arc4random_uniform((uint32_t)range);
 
-    NSInteger result =
-        minValue + (NSInteger)randomValue;
 
-    // 儲存真正的結果
+    NSInteger result =
+        minValue +
+        (NSInteger)randomValue;
+
+
+    // ============================================================
+    // 儲存結果
+    // ============================================================
+
     self.currentResult =
-        [NSString stringWithFormat:@"%ld",
+        [NSString stringWithFormat:
+         @"%ld",
          (long)result];
+
+
+    // ============================================================
+    // 顯示結果
+    // ============================================================
 
     self.resultLabel.text =
         [NSString stringWithFormat:
-            @"結果：%ld",
-            (long)result];
+         @"結果：%ld",
+         (long)result];
 
+
+    // ============================================================
     // 啟用複製按鈕
-    self.copyButton.enabled = YES;
-    self.copyButton.alpha = 1.0;
+    // ============================================================
 
-    [self.copyButton setTitle:@"📋 複製結果"
-                      forState:UIControlStateNormal];
+    self.copyResultButton.enabled = YES;
+
+    self.copyResultButton.alpha = 1.0;
+
+    [self.copyResultButton setTitle:@"📋 複製結果"
+                            forState:UIControlStateNormal];
+
+
+    // ============================================================
+    // 結果動畫
+    // ============================================================
 
     [self animateResult];
 }
+
 
 #pragma mark - Clear Result
 
@@ -308,14 +451,16 @@
 
     self.currentResult = nil;
 
-    self.copyButton.enabled = NO;
-    self.copyButton.alpha = 0.45;
+    self.copyResultButton.enabled = NO;
 
-    [self.copyButton setTitle:@"📋 複製結果"
-                      forState:UIControlStateNormal];
+    self.copyResultButton.alpha = 0.45;
+
+    [self.copyResultButton setTitle:@"📋 複製結果"
+                            forState:UIControlStateNormal];
 }
 
-#pragma mark - Copy
+
+#pragma mark - Copy Result
 
 - (void)copyResult {
 
@@ -323,57 +468,90 @@
         return;
     }
 
-    // 複製純數字
+
+    // ============================================================
+    // 複製到剪貼簿
+    // ============================================================
+
     UIPasteboard *pasteboard =
         [UIPasteboard generalPasteboard];
 
-    pasteboard.string = self.currentResult;
+    pasteboard.string =
+        self.currentResult;
 
-    // 按鈕動畫
+
+    // ============================================================
+    // 按鈕縮放動畫
+    // ============================================================
+
     [UIView animateWithDuration:0.1
                      animations:^{
 
-        self.copyButton.transform =
+        self.copyResultButton.transform =
             CGAffineTransformMakeScale(0.92, 0.92);
 
-    } completion:^(BOOL finished) {
+    }
+                     completion:^(BOOL finished) {
 
         [UIView animateWithDuration:0.18
                          animations:^{
 
-            self.copyButton.transform =
+            self.copyResultButton.transform =
                 CGAffineTransformIdentity;
+
         }];
+
     }];
 
-    // 修改按鈕文字
-    [self.copyButton setTitle:@"✓ 已複製"
-                      forState:UIControlStateNormal];
 
-    // 讓按鈕稍微淡一下再恢復
+    // ============================================================
+    // 修改按鈕文字
+    // ============================================================
+
+    [self.copyResultButton setTitle:@"✓ 已複製"
+                            forState:UIControlStateNormal];
+
+
+    // ============================================================
+    // 淡出再恢復
+    // ============================================================
+
     [UIView animateWithDuration:0.15
                      animations:^{
 
-        self.copyButton.alpha = 0.7;
+        self.copyResultButton.alpha = 0.7;
 
-    } completion:^(BOOL finished) {
+    }
+                     completion:^(BOOL finished) {
 
         [UIView animateWithDuration:0.2
                          animations:^{
 
-            self.copyButton.alpha = 1.0;
+            self.copyResultButton.alpha = 1.0;
+
         }];
+
     }];
 
-    // 1 秒後恢復
+
+    // ============================================================
+    // 取消之前的恢復排程
+    // ============================================================
+
     [NSObject cancelPreviousPerformRequestsWithTarget:self
                                              selector:@selector(resetCopyButton)
                                                object:nil];
+
+
+    // ============================================================
+    // 1 秒後恢復按鈕
+    // ============================================================
 
     [self performSelector:@selector(resetCopyButton)
                withObject:nil
                afterDelay:1.0];
 }
+
 
 #pragma mark - Reset Copy Button
 
@@ -383,18 +561,21 @@
         return;
     }
 
-    [UIView transitionWithView:self.copyButton
+
+    [UIView transitionWithView:self.copyResultButton
                       duration:0.2
                        options:UIViewAnimationOptionTransitionCrossDissolve
                     animations:^{
 
-        [self.copyButton setTitle:@"📋 複製結果"
-                          forState:UIControlStateNormal];
+        [self.copyResultButton setTitle:@"📋 複製結果"
+                                forState:UIControlStateNormal];
 
-    } completion:nil];
+    }
+                    completion:nil];
 }
 
-#pragma mark - Animation
+
+#pragma mark - Result Animation
 
 - (void)animateResult {
 
@@ -403,6 +584,7 @@
 
     self.resultLabel.alpha = 0.2;
 
+
     [UIView animateWithDuration:0.25
                      animations:^{
 
@@ -410,6 +592,7 @@
             CGAffineTransformIdentity;
 
         self.resultLabel.alpha = 1.0;
+
     }];
 }
 
