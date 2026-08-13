@@ -8,7 +8,7 @@
 @property (nonatomic, strong) UITextField *minField;
 @property (nonatomic, strong) UITextField *maxField;
 
-@property (nonatomic, strong) UIButton *copyResultButton;
+@property (nonatomic, strong) UIButton *resultActionButton;
 @property (nonatomic, strong) NSString *currentResult;
 
 @end
@@ -105,17 +105,17 @@
     // 複製結果按鈕
     // ============================================================
 
-    self.copyResultButton =
+    self.resultActionButton =
         MakeButton(@"📋 複製結果",
                    [UIColor systemBlueColor]);
 
-    [self.copyResultButton addTarget:self
-                              action:@selector(copyResult)
-                    forControlEvents:UIControlEventTouchUpInside];
+    [self.resultActionButton addTarget:self
+                                action:@selector(copyResult)
+                      forControlEvents:UIControlEventTouchUpInside];
 
     // 一開始沒有結果
-    self.copyResultButton.enabled = NO;
-    self.copyResultButton.alpha = 0.45;
+    self.resultActionButton.enabled = NO;
+    self.resultActionButton.alpha = 0.45;
 
 
     // ============================================================
@@ -132,7 +132,7 @@
 
     [self.view addSubview:generateButton];
 
-    [self.view addSubview:self.copyResultButton];
+    [self.view addSubview:self.resultActionButton];
 
 
     // ============================================================
@@ -251,25 +251,25 @@
 
 
         // --------------------------------------------------------
-        // Copy Result Button
+        // Result Action Button
         // --------------------------------------------------------
 
-        [self.copyResultButton.topAnchor
+        [self.resultActionButton.topAnchor
          constraintEqualToAnchor:
          generateButton.bottomAnchor
          constant:15],
 
-        [self.copyResultButton.leadingAnchor
+        [self.resultActionButton.leadingAnchor
          constraintEqualToAnchor:
          self.view.leadingAnchor
          constant:25],
 
-        [self.copyResultButton.trailingAnchor
+        [self.resultActionButton.trailingAnchor
          constraintEqualToAnchor:
          self.view.trailingAnchor
          constant:-25],
 
-        [self.copyResultButton.heightAnchor
+        [self.resultActionButton.heightAnchor
          constraintEqualToConstant:52]
 
     ]];
@@ -280,7 +280,6 @@
 
 - (void)generateRandomNumber {
 
-    // 收起鍵盤
     [self.view endEditing:YES];
 
 
@@ -379,7 +378,6 @@
         1ULL;
 
 
-    // arc4random_uniform 使用 uint32_t
     if (range == 0 ||
         range > UINT32_MAX) {
 
@@ -398,7 +396,6 @@
 
     uint32_t randomValue =
         arc4random_uniform((uint32_t)range);
-
 
     NSInteger result =
         minValue +
@@ -426,19 +423,19 @@
 
 
     // ============================================================
-    // 啟用複製按鈕
+    // 啟用按鈕
     // ============================================================
 
-    self.copyResultButton.enabled = YES;
+    self.resultActionButton.enabled = YES;
 
-    self.copyResultButton.alpha = 1.0;
+    self.resultActionButton.alpha = 1.0;
 
-    [self.copyResultButton setTitle:@"📋 複製結果"
-                            forState:UIControlStateNormal];
+    [self.resultActionButton setTitle:@"📋 複製結果"
+                              forState:UIControlStateNormal];
 
 
     // ============================================================
-    // 結果動畫
+    // 動畫
     // ============================================================
 
     [self animateResult];
@@ -451,12 +448,12 @@
 
     self.currentResult = nil;
 
-    self.copyResultButton.enabled = NO;
+    self.resultActionButton.enabled = NO;
 
-    self.copyResultButton.alpha = 0.45;
+    self.resultActionButton.alpha = 0.45;
 
-    [self.copyResultButton setTitle:@"📋 複製結果"
-                            forState:UIControlStateNormal];
+    [self.resultActionButton setTitle:@"📋 複製結果"
+                              forState:UIControlStateNormal];
 }
 
 
@@ -487,7 +484,7 @@
     [UIView animateWithDuration:0.1
                      animations:^{
 
-        self.copyResultButton.transform =
+        self.resultActionButton.transform =
             CGAffineTransformMakeScale(0.92, 0.92);
 
     }
@@ -496,7 +493,7 @@
         [UIView animateWithDuration:0.18
                          animations:^{
 
-            self.copyResultButton.transform =
+            self.resultActionButton.transform =
                 CGAffineTransformIdentity;
 
         }];
@@ -508,8 +505,8 @@
     // 修改按鈕文字
     // ============================================================
 
-    [self.copyResultButton setTitle:@"✓ 已複製"
-                            forState:UIControlStateNormal];
+    [self.resultActionButton setTitle:@"✓ 已複製"
+                              forState:UIControlStateNormal];
 
 
     // ============================================================
@@ -519,7 +516,7 @@
     [UIView animateWithDuration:0.15
                      animations:^{
 
-        self.copyResultButton.alpha = 0.7;
+        self.resultActionButton.alpha = 0.7;
 
     }
                      completion:^(BOOL finished) {
@@ -527,7 +524,7 @@
         [UIView animateWithDuration:0.2
                          animations:^{
 
-            self.copyResultButton.alpha = 1.0;
+            self.resultActionButton.alpha = 1.0;
 
         }];
 
@@ -544,7 +541,7 @@
 
 
     // ============================================================
-    // 1 秒後恢復按鈕
+    // 1 秒後恢復
     // ============================================================
 
     [self performSelector:@selector(resetCopyButton)
@@ -553,7 +550,7 @@
 }
 
 
-#pragma mark - Reset Copy Button
+#pragma mark - Reset Button
 
 - (void)resetCopyButton {
 
@@ -562,13 +559,13 @@
     }
 
 
-    [UIView transitionWithView:self.copyResultButton
+    [UIView transitionWithView:self.resultActionButton
                       duration:0.2
                        options:UIViewAnimationOptionTransitionCrossDissolve
                     animations:^{
 
-        [self.copyResultButton setTitle:@"📋 複製結果"
-                                forState:UIControlStateNormal];
+        [self.resultActionButton setTitle:@"📋 複製結果"
+                                  forState:UIControlStateNormal];
 
     }
                     completion:nil];
