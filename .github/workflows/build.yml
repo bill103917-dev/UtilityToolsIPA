@@ -1,6 +1,6 @@
 name: Build Utility IPA
 
-'on':
+on:
   workflow_dispatch:
 
 jobs:
@@ -98,13 +98,13 @@ jobs:
       # ============================================================
       # 3. 清理舊檔案
       # ============================================================
-      - name: Clean Build
+      - name: Clean Build Environment
         shell: bash
         run: |
           set -e
 
           echo "========================================"
-          echo "            CLEAN BUILD"
+          echo "       CLEAN BUILD ENVIRONMENT"
           echo "========================================"
 
           rm -rf build
@@ -305,7 +305,7 @@ jobs:
 
 
           # ========================================================
-          # 強制建立 1024x1024
+          # 建立 1024x1024 Icon
           # ========================================================
 
           echo ""
@@ -335,7 +335,6 @@ jobs:
             -g pixelHeight \
             "$ICON_OUTPUT"
 
-
           FINAL_WIDTH=$(
             sips \
               -g pixelWidth \
@@ -350,11 +349,9 @@ jobs:
               | awk '/pixelHeight:/ {print $2}'
           )
 
-
           echo ""
           echo "Final Width:  $FINAL_WIDTH"
           echo "Final Height: $FINAL_HEIGHT"
-
 
           if [ "$FINAL_WIDTH" != "1024" ] || [ "$FINAL_HEIGHT" != "1024" ]; then
             echo ""
@@ -394,38 +391,78 @@ jobs:
           # Assets.xcassets Contents.json
           # ========================================================
 
-          cat > build/Assets.xcassets/Contents.json <<'EOF'
-          {
-            "info" : {
-              "author" : "xcode",
-              "version" : 1
-            }
-          }
-          EOF
+          printf '%s\n' \
+            '{' \
+            '  "info" : {' \
+            '    "author" : "xcode",' \
+            '    "version" : 1' \
+            '  }' \
+            '}' \
+            > build/Assets.xcassets/Contents.json
 
 
           # ========================================================
           # AppIcon.appiconset Contents.json
           # ========================================================
 
-          cat > build/Assets.xcassets/AppIcon.appiconset/Contents.json <<'EOF'
-          {
-            "images" : [
-              {
-                "filename" : "AppIcon.png",
-                "idiom" : "ios-marketing",
-                "scale" : "1x",
-                "size" : "1024x1024"
-              }
-            ],
-            "info" : {
-              "author" : "xcode",
-              "version" : 1
-            }
-          }
-          EOF
+          printf '%s\n' \
+            '{' \
+            '  "images" : [' \
+            '    {' \
+            '      "filename" : "AppIcon.png",' \
+            '      "idiom" : "iphone",' \
+            '      "scale" : "2x",' \
+            '      "size" : "60x60"' \
+            '    },' \
+            '    {' \
+            '      "filename" : "AppIcon.png",' \
+            '      "idiom" : "iphone",' \
+            '      "scale" : "3x",' \
+            '      "size" : "60x60"' \
+            '    },' \
+            '    {' \
+            '      "filename" : "AppIcon.png",' \
+            '      "idiom" : "ipad",' \
+            '      "scale" : "2x",' \
+            '      "size" : "76x76"' \
+            '    },' \
+            '    {' \
+            '      "filename" : "AppIcon.png",' \
+            '      "idiom" : "ipad",' \
+            '      "scale" : "2x",' \
+            '      "size" : "83.5x83.5"' \
+            '    },' \
+            '    {' \
+            '      "filename" : "AppIcon.png",' \
+            '      "idiom" : "ios-marketing",' \
+            '      "scale" : "1x",' \
+            '      "size" : "1024x1024"' \
+            '    }' \
+            '  ],' \
+            '  "info" : {' \
+            '    "author" : "xcode",' \
+            '    "version" : 1' \
+            '  }' \
+            '}' \
+            > build/Assets.xcassets/AppIcon.appiconset/Contents.json
 
+
+          echo ""
           echo "✓ Assets.xcassets created."
+
+
+          # ========================================================
+          # 顯示 Asset Catalog
+          # ========================================================
+
+          echo ""
+          echo "Asset catalog files:"
+
+          find build/Assets.xcassets \
+            -maxdepth 3 \
+            -type f \
+            -print \
+            | sort
 
 
           # ========================================================
@@ -442,7 +479,6 @@ jobs:
           mkdir -p build/CompiledAssets
 
           rm -f build/asset-partial-info.plist
-
 
           xcrun actool \
             --output-format human-readable-text \
@@ -461,7 +497,6 @@ jobs:
           echo ""
 
           if [ ! -f "build/CompiledAssets/Assets.car" ]; then
-
             echo "ERROR: Assets.car was not generated."
 
             echo ""
@@ -473,6 +508,7 @@ jobs:
 
             echo ""
             echo "Partial plist:"
+
             if [ -f "build/asset-partial-info.plist" ]; then
               cat build/asset-partial-info.plist
             fi
@@ -484,7 +520,7 @@ jobs:
 
 
           # ========================================================
-          # 複製 Assets.car 到 App
+          # 複製 Assets.car
           # ========================================================
 
           cp \
@@ -505,7 +541,7 @@ jobs:
 
 
           # --------------------------------------------------------
-          # 移除舊的 Icon 設定
+          # 移除舊 Icon 設定
           # --------------------------------------------------------
 
           /usr/libexec/PlistBuddy \
@@ -520,9 +556,24 @@ jobs:
             2>/dev/null \
             || true
 
+          /usr/libexec/PlistBuddy \
+            -c "Delete :CFBundleIconName" \
+            "$PLIST" \
+            2>/dev/null \
+            || true
+
 
           # --------------------------------------------------------
-          # 建立 CFBundleIcons
+          # CFBundleIconName
+          # --------------------------------------------------------
+
+          /usr/libexec/PlistBuddy \
+            -c "Add :CFBundleIconName string AppIcon" \
+            "$PLIST"
+
+
+          # --------------------------------------------------------
+          # iPhone Icon
           # --------------------------------------------------------
 
           /usr/libexec/PlistBuddy \
@@ -544,6 +595,32 @@ jobs:
           /usr/libexec/PlistBuddy \
             -c "Add :CFBundleIcons:CFBundlePrimaryIcon:CFBundleIconName string AppIcon" \
             "$PLIST"
+
+
+          # --------------------------------------------------------
+          # iPad Icon
+          # --------------------------------------------------------
+
+          /usr/libexec/PlistBuddy \
+            -c "Add :CFBundleIcons~ipad dict" \
+            "$PLIST"
+
+          /usr/libexec/PlistBuddy \
+            -c "Add :CFBundleIcons~ipad:CFBundlePrimaryIcon dict" \
+            "$PLIST"
+
+          /usr/libexec/PlistBuddy \
+            -c "Add :CFBundleIcons~ipad:CFBundlePrimaryIcon:CFBundleIconFiles array" \
+            "$PLIST"
+
+          /usr/libexec/PlistBuddy \
+            -c "Add :CFBundleIcons~ipad:CFBundlePrimaryIcon:CFBundleIconFiles:0 string AppIcon" \
+            "$PLIST"
+
+          /usr/libexec/PlistBuddy \
+            -c "Add :CFBundleIcons~ipad:CFBundlePrimaryIcon:CFBundleIconName string AppIcon" \
+            "$PLIST"
+
 
           echo ""
           echo "✓ Info.plist configured."
@@ -610,10 +687,24 @@ jobs:
             || echo "CFBundleDisplayName not specified."
 
           echo ""
-          echo "App Icon:"
+          echo "CFBundleIconName:"
+
+          /usr/libexec/PlistBuddy \
+            -c "Print :CFBundleIconName" \
+            "$PLIST"
+
+          echo ""
+          echo "CFBundleIcons:"
 
           /usr/libexec/PlistBuddy \
             -c "Print :CFBundleIcons" \
+            "$PLIST"
+
+          echo ""
+          echo "CFBundleIcons~ipad:"
+
+          /usr/libexec/PlistBuddy \
+            -c "Print :CFBundleIcons~ipad" \
             "$PLIST"
 
           echo ""
@@ -621,7 +712,54 @@ jobs:
 
 
       # ============================================================
-      # 10. 移除舊簽名
+      # 10. 驗證 Assets.car
+      # ============================================================
+      - name: Verify Assets Catalog
+        shell: bash
+        run: |
+          set -e
+
+          echo "========================================"
+          echo "       VERIFYING ASSET CATALOG"
+          echo "========================================"
+
+          APP="Payload/UtilityTools.app"
+          ASSETS="$APP/Assets.car"
+
+          test -f "$ASSETS"
+
+          echo ""
+          echo "Assets.car:"
+          ls -lh "$ASSETS"
+
+          echo ""
+          echo "Asset catalog information:"
+
+          xcrun assetutil \
+            --info \
+            "$ASSETS" \
+            > build/assets-info.json
+
+          test -s build/assets-info.json
+
+          echo ""
+          echo "Searching for AppIcon metadata:"
+
+          if grep -q "AppIcon" build/assets-info.json; then
+            echo "✓ AppIcon found inside Assets.car."
+          else
+            echo "WARNING: AppIcon text was not found in assetutil output."
+            echo ""
+            echo "First 100 lines of asset information:"
+            head -100 build/assets-info.json
+          fi
+
+          echo ""
+          echo "✓ Assets.car verification completed."
+
+
+      # ============================================================
+      # 11. 移除舊簽名
       # ============================================================
       - name: Remove Existing Signature
         shell: bash
@@ -644,7 +782,7 @@ jobs:
 
 
       # ============================================================
-      # 11. 驗證 App Bundle
+      # 12. 驗證 App Bundle
       # ============================================================
       - name: Verify App Bundle
         shell: bash
@@ -660,11 +798,8 @@ jobs:
           test -d "$APP"
 
           test -f "$APP/UtilityTools"
-
           test -f "$APP/Info.plist"
-
           test -f "$APP/PkgInfo"
-
           test -f "$APP/Assets.car"
 
           echo "✓ UtilityTools.app"
@@ -678,7 +813,7 @@ jobs:
 
 
       # ============================================================
-      # 12. 建立 Unsigned IPA
+      # 13. 建立 Unsigned IPA
       # ============================================================
       - name: Create Unsigned IPA
         shell: bash
@@ -692,7 +827,6 @@ jobs:
           rm -f UtilityTools-unsigned.ipa
 
           test -d Payload
-
           test -d Payload/UtilityTools.app
 
           zip \
@@ -708,7 +842,7 @@ jobs:
 
 
       # ============================================================
-      # 13. 驗證 IPA
+      # 14. 驗證 IPA
       # ============================================================
       - name: Verify IPA
         shell: bash
@@ -723,7 +857,6 @@ jobs:
 
           echo ""
           echo "IPA size:"
-
           ls -lh UtilityTools-unsigned.ipa
 
 
@@ -794,7 +927,7 @@ jobs:
 
 
           # ========================================================
-          # App Icon
+          # App Icon Verification
           # ========================================================
 
           echo ""
@@ -808,12 +941,25 @@ jobs:
           ls -lh \
             ipa_verify/Payload/UtilityTools.app/Assets.car
 
+          echo ""
+          echo "CFBundleIconName:"
+
+          /usr/libexec/PlistBuddy \
+            -c "Print :CFBundleIconName" \
+            ipa_verify/Payload/UtilityTools.app/Info.plist
 
           echo ""
-          echo "Info.plist App Icon:"
+          echo "CFBundleIcons:"
 
           /usr/libexec/PlistBuddy \
             -c "Print :CFBundleIcons" \
+            ipa_verify/Payload/UtilityTools.app/Info.plist
+
+          echo ""
+          echo "CFBundleIcons~ipad:"
+
+          /usr/libexec/PlistBuddy \
+            -c "Print :CFBundleIcons~ipad" \
             ipa_verify/Payload/UtilityTools.app/Info.plist
 
 
@@ -835,12 +981,11 @@ jobs:
             -print \
             | sort
 
-
           rm -rf ipa_verify
 
 
       # ============================================================
-      # 14. 檢查 IPA Root
+      # 15. 檢查 IPA Root
       # ============================================================
       - name: Check IPA Root Structure
         shell: bash
@@ -860,23 +1005,19 @@ jobs:
           echo "First entry:"
           echo "$ROOT_CONTENT"
 
-
           if [[ "$ROOT_CONTENT" != Payload/* ]]; then
-
             echo ""
             echo "ERROR:"
             echo "IPA does not contain Payload at root."
-
             exit 1
           fi
-
 
           echo ""
           echo "✓ IPA root structure is correct."
 
 
       # ============================================================
-      # 15. 上傳 IPA
+      # 16. 上傳 IPA
       # ============================================================
       - name: Upload IPA
         uses: actions/upload-artifact@v4
@@ -887,7 +1028,7 @@ jobs:
 
 
       # ============================================================
-      # 16. Build Summary
+      # 17. Build Summary
       # ============================================================
       - name: Build Summary
         shell: bash
@@ -925,6 +1066,10 @@ jobs:
           echo "Assets.car"
           echo "        ↓"
           echo "UtilityTools.app"
+
+          echo ""
+          echo "Signing:"
+          echo "UNSIGNED - ready for your own signing process"
 
           echo ""
           echo "========================================"
