@@ -4,7 +4,7 @@
 @interface TimerViewController ()
 
 @property (nonatomic, strong) UILabel *timeLabel;
-@property (nonatomic, strong) UILabel *lapLabel;
+@property (nonatomic, strong) UITextView *lapTextView;
 
 @property (nonatomic, strong) UIButton *startButton;
 @property (nonatomic, strong) UIButton *lapButton;
@@ -15,6 +15,8 @@
 @property (nonatomic, assign) NSInteger lapCount;
 
 @property (nonatomic, assign) BOOL running;
+
+@property (nonatomic, strong) NSMutableArray<NSString *> *lapTimes;
 
 @end
 
@@ -30,6 +32,13 @@
     self.lapCount = 0;
     self.running = NO;
 
+    self.lapTimes =
+        [NSMutableArray array];
+
+    // =========================================================
+    // 時間
+    // =========================================================
+
     self.timeLabel =
         MakeLabel(@"00:00",
                   54,
@@ -40,28 +49,68 @@
 
     self.timeLabel.adjustsFontSizeToFitWidth = YES;
 
-    self.lapLabel =
-        MakeLabel(@"尚未分圈",
-                  17,
-                  UIFontWeightMedium);
+    // =========================================================
+    // 分圈紀錄
+    // =========================================================
 
-    self.lapLabel.textAlignment =
+    self.lapTextView =
+        [[UITextView alloc] init];
+
+    self.lapTextView.translatesAutoresizingMaskIntoConstraints = NO;
+
+    self.lapTextView.editable = NO;
+    self.lapTextView.selectable = NO;
+
+    self.lapTextView.scrollEnabled = YES;
+
+    self.lapTextView.showsVerticalScrollIndicator = YES;
+
+    self.lapTextView.backgroundColor =
+        [UIColor secondarySystemBackgroundColor];
+
+    self.lapTextView.layer.cornerRadius = 14;
+    self.lapTextView.clipsToBounds = YES;
+
+    self.lapTextView.font =
+        [UIFont systemFontOfSize:17
+                          weight:UIFontWeightMedium];
+
+    self.lapTextView.textColor =
+        [UIColor secondaryLabelColor];
+
+    self.lapTextView.textAlignment =
         NSTextAlignmentCenter;
 
-    self.lapLabel.textColor =
-        [UIColor secondaryLabelColor];
+    self.lapTextView.text =
+        @"尚未分圈";
+
+    // =========================================================
+    // 開始
+    // =========================================================
 
     self.startButton =
         MakeButton(@"▶️ 開始",
                    [UIColor systemGreenColor]);
 
+    // =========================================================
+    // 分圈 / 歸零
+    // =========================================================
+
     self.lapButton =
         MakeButton(@"🔄 歸零",
                    [UIColor systemRedColor]);
 
+    // =========================================================
+    // 暫停
+    // =========================================================
+
     UIButton *pauseButton =
         MakeButton(@"⏸️ 暫停",
                    [UIColor systemOrangeColor]);
+
+    // =========================================================
+    // Button Actions
+    // =========================================================
 
     [self.startButton addTarget:self
                          action:@selector(startTimer)
@@ -75,11 +124,15 @@
                        action:@selector(lapOrReset)
              forControlEvents:UIControlEventTouchUpInside];
 
+    // =========================================================
+    // Stack
+    // =========================================================
+
     UIStackView *stack =
         [[UIStackView alloc]
          initWithArrangedSubviews:@[
             self.timeLabel,
-            self.lapLabel,
+            self.lapTextView,
             self.startButton,
             pauseButton,
             self.lapButton
@@ -90,11 +143,28 @@
 
     stack.spacing = 16;
 
+    stack.alignment =
+        UIStackViewAlignmentFill;
+
     stack.translatesAutoresizingMaskIntoConstraints = NO;
 
     [self.view addSubview:stack];
 
+    // =========================================================
+    // Layout
+    // =========================================================
+
     [NSLayoutConstraint activateConstraints:@[
+        [stack.topAnchor
+         constraintGreaterThanOrEqualToAnchor:
+         self.view.safeAreaLayoutGuide.topAnchor
+         constant:30],
+
+        [stack.bottomAnchor
+         constraintLessThanOrEqualToAnchor:
+         self.view.safeAreaLayoutGuide.bottomAnchor
+         constant:-30],
+
         [stack.centerYAnchor
          constraintEqualToAnchor:
          self.view.centerYAnchor],
@@ -107,17 +177,22 @@
         [stack.trailingAnchor
          constraintEqualToAnchor:
          self.view.trailingAnchor
-         constant:-30]
+         constant:-30],
+
+        // 分圈紀錄區高度
+        [self.lapTextView.heightAnchor
+         constraintEqualToConstant:160],
+
+        // 按鈕高度
+        [self.startButton.heightAnchor
+         constraintEqualToConstant:58],
+
+        [pauseButton.heightAnchor
+         constraintEqualToConstant:58],
+
+        [self.lapButton.heightAnchor
+         constraintEqualToConstant:58]
     ]];
-
-    [self.startButton.heightAnchor
-     constraintEqualToConstant:58].active = YES;
-
-    [pauseButton.heightAnchor
-     constraintEqualToConstant:58].active = YES;
-
-    [self.lapButton.heightAnchor
-     constraintEqualToConstant:58].active = YES;
 }
 
 #pragma mark - Start
@@ -154,6 +229,7 @@
     }
 
     [self.timer invalidate];
+
     self.timer = nil;
 
     self.running = NO;
@@ -174,11 +250,33 @@
 
         self.lapCount++;
 
-        self.lapLabel.text =
+        NSString *lapTime =
             [NSString stringWithFormat:
                 @"第 %ld 圈：%@",
                 (long)self.lapCount,
                 self.timeLabel.text];
+
+        // =====================================================
+        // 保存這一圈
+        // =====================================================
+
+        [self.lapTimes addObject:lapTime];
+
+        // =====================================================
+        // 顯示全部圈數
+        // =====================================================
+
+        self.lapTextView.text =
+            [self.lapTimes componentsJoinedByString:@"\n"];
+
+        // 捲到最下面
+        if (self.lapTextView.text.length > 0) {
+
+            [self.lapTextView scrollRangeToVisible:
+                NSMakeRange(
+                    self.lapTextView.text.length - 1,
+                    1)];
+        }
 
         [self animateLap];
 
@@ -223,11 +321,16 @@
     self.timer = nil;
 
     self.seconds = 0;
+
     self.lapCount = 0;
 
     self.running = NO;
 
+    // 清除所有圈數
+    [self.lapTimes removeAllObjects];
+
     self.startButton.enabled = YES;
+
     self.startButton.alpha = 1.0;
 
     [self.startButton setTitle:@"▶️ 開始"
@@ -236,7 +339,8 @@
     [self.lapButton setTitle:@"🔄 歸零"
                      forState:UIControlStateNormal];
 
-    self.lapLabel.text = @"尚未分圈";
+    self.lapTextView.text =
+        @"尚未分圈";
 
     [self updateTimeLabel];
 }
@@ -248,15 +352,15 @@
     [UIView animateWithDuration:0.15
                      animations:^{
 
-        self.lapLabel.transform =
-            CGAffineTransformMakeScale(1.08, 1.08);
+        self.lapTextView.transform =
+            CGAffineTransformMakeScale(1.03, 1.03);
     }
                      completion:^(BOOL finished) {
 
         [UIView animateWithDuration:0.15
                          animations:^{
 
-            self.lapLabel.transform =
+            self.lapTextView.transform =
                 CGAffineTransformIdentity;
         }];
     }];
