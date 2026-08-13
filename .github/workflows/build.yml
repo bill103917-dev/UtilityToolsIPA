@@ -1,4 +1,4 @@
-name: Build Utility IPA
+name: UtilityTools ICON TEST
 
 on:
   workflow_dispatch:
