@@ -1,8 +1,8 @@
 name: Build Utility IPA
 
-on:
+'on':
   workflow_dispatch:
- 
+
 jobs:
   build:
     name: Compile UtilityTools
