@@ -241,11 +241,9 @@ jobs:
             Info.plist \
             "$APP/Info.plist"
 
-          printf 'APPL????' \
-            > "$APP/PkgInfo"
+          printf 'APPL????' > "$APP/PkgInfo"
 
-          chmod +x \
-            "$APP/UtilityTools"
+          chmod +x "$APP/UtilityTools"
 
           echo ""
           echo "App bundle created."
@@ -274,9 +272,9 @@ jobs:
           APP="Payload/UtilityTools.app"
           PLIST="$APP/Info.plist"
 
-          # --------------------------------------------------------
-          # 確認原始圖片
-          # --------------------------------------------------------
+          # ========================================================
+          # 檢查原始 AppIcon
+          # ========================================================
 
           if [ ! -f "AppIcon/AppIcon.png" ]; then
             echo "ERROR: AppIcon/AppIcon.png not found."
@@ -285,34 +283,40 @@ jobs:
 
           echo "✓ Found AppIcon/AppIcon.png"
 
-          # --------------------------------------------------------
-          # 讀取原始圖片尺寸
-          # --------------------------------------------------------
+          # ========================================================
+          # 顯示原始圖片尺寸
+          # ========================================================
 
           echo ""
-          echo "Checking original icon size..."
+          echo "Original icon size:"
 
-          WIDTH=$(sips \
+          sips \
             -g pixelWidth \
-            AppIcon/AppIcon.png \
-            | tail -1 \
-            | awk '{print $2}')
-
-          HEIGHT=$(sips \
             -g pixelHeight \
-            AppIcon/AppIcon.png \
+            AppIcon/AppIcon.png
+
+          ORIGINAL_WIDTH=$(
+            sips -g pixelWidth AppIcon/AppIcon.png \
             | tail -1 \
-            | awk '{print $2}')
+            | awk '{print $2}'
+          )
 
-          echo "Original Width:  $WIDTH"
-          echo "Original Height: $HEIGHT"
-
-          # --------------------------------------------------------
-          # 自動轉成 1024x1024
-          # --------------------------------------------------------
+          ORIGINAL_HEIGHT=$(
+            sips -g pixelHeight AppIcon/AppIcon.png \
+            | tail -1 \
+            | awk '{print $2}'
+          )
 
           echo ""
-          echo "Preparing 1024x1024 App Icon..."
+          echo "Original Width:  $ORIGINAL_WIDTH"
+          echo "Original Height: $ORIGINAL_HEIGHT"
+
+          # ========================================================
+          # 自動轉成 1024x1024
+          # ========================================================
+
+          echo ""
+          echo "Creating 1024x1024 icon..."
 
           rm -f build/AppIcon-1024.png
 
@@ -325,21 +329,21 @@ jobs:
 
           echo "✓ Icon resized."
 
-          # --------------------------------------------------------
-          # 驗證最後尺寸
-          # --------------------------------------------------------
+          # ========================================================
+          # 驗證 1024x1024
+          # ========================================================
 
-          FINAL_WIDTH=$(sips \
-            -g pixelWidth \
-            build/AppIcon-1024.png \
+          FINAL_WIDTH=$(
+            sips -g pixelWidth build/AppIcon-1024.png \
             | tail -1 \
-            | awk '{print $2}')
+            | awk '{print $2}'
+          )
 
-          FINAL_HEIGHT=$(sips \
-            -g pixelHeight \
-            build/AppIcon-1024.png \
+          FINAL_HEIGHT=$(
+            sips -g pixelHeight build/AppIcon-1024.png \
             | tail -1 \
-            | awk '{print $2}')
+            | awk '{print $2}'
+          )
 
           echo ""
           echo "Final Width:  $FINAL_WIDTH"
@@ -359,7 +363,9 @@ jobs:
           # ========================================================
 
           echo ""
-          echo "Creating Assets.xcassets..."
+          echo "========================================"
+          echo "        CREATING ASSET CATALOG"
+          echo "========================================"
 
           rm -rf build/Assets.xcassets
 
@@ -370,39 +376,58 @@ jobs:
             build/AppIcon-1024.png \
             build/Assets.xcassets/AppIcon.appiconset/AppIcon.png
 
+          echo "✓ AppIcon.png copied."
+
 
           # ========================================================
-          # 建立 Contents.json
+          # Assets.xcassets Contents.json
           # ========================================================
 
-          cat > build/Assets.xcassets/Contents.json <<'EOF'
-{
-  "info" : {
-    "author" : "xcode",
-    "version" : 1
-  }
-}
-EOF
+          printf '%s\n' \
+          '{' \
+          '  "info" : {' \
+          '    "author" : "xcode",' \
+          '    "version" : 1' \
+          '  }' \
+          '}' \
+          > build/Assets.xcassets/Contents.json
 
 
-          cat > build/Assets.xcassets/AppIcon.appiconset/Contents.json <<'EOF'
-{
-  "images" : [
-    {
-      "filename" : "AppIcon.png",
-      "idiom" : "ios-marketing",
-      "scale" : "1x",
-      "size" : "1024x1024"
-    }
-  ],
-  "info" : {
-    "author" : "xcode",
-    "version" : 1
-  }
-}
-EOF
+          # ========================================================
+          # AppIcon.appiconset Contents.json
+          # ========================================================
+
+          printf '%s\n' \
+          '{' \
+          '  "images" : [' \
+          '    {' \
+          '      "filename" : "AppIcon.png",' \
+          '      "idiom" : "ios-marketing",' \
+          '      "scale" : "1x",' \
+          '      "size" : "1024x1024"' \
+          '    }' \
+          '  ],' \
+          '  "info" : {' \
+          '    "author" : "xcode",' \
+          '    "version" : 1' \
+          '  }' \
+          '}' \
+          > build/Assets.xcassets/AppIcon.appiconset/Contents.json
 
           echo "✓ Assets.xcassets created."
+
+
+          # ========================================================
+          # 顯示 Asset Catalog
+          # ========================================================
+
+          echo ""
+          echo "Asset catalog structure:"
+
+          find build/Assets.xcassets \
+            -maxdepth 3 \
+            -print \
+            | sort
 
 
           # ========================================================
@@ -420,6 +445,8 @@ EOF
 
           xcrun actool \
             --output-format human-readable-text \
+            --notices \
+            --warnings \
             --platform iphoneos \
             --minimum-deployment-target 15.0 \
             --app-icon AppIcon \
@@ -467,7 +494,9 @@ EOF
           # ========================================================
 
           echo ""
-          echo "Configuring Info.plist..."
+          echo "========================================"
+          echo "        CONFIGURING INFO.PLIST"
+          echo "========================================"
 
           /usr/libexec/PlistBuddy \
             -c "Delete :CFBundleIcons" \
@@ -481,31 +510,47 @@ EOF
             2>/dev/null \
             || true
 
-
           /usr/libexec/PlistBuddy \
             -c "Add :CFBundleIcons dict" \
             "$PLIST"
-
 
           /usr/libexec/PlistBuddy \
             -c "Add :CFBundleIcons:CFBundlePrimaryIcon dict" \
             "$PLIST"
 
-
           /usr/libexec/PlistBuddy \
             -c "Add :CFBundleIcons:CFBundlePrimaryIcon:CFBundleIconFiles array" \
             "$PLIST"
-
 
           /usr/libexec/PlistBuddy \
             -c "Add :CFBundleIcons:CFBundlePrimaryIcon:CFBundleIconFiles:0 string AppIcon" \
             "$PLIST"
 
-
           /usr/libexec/PlistBuddy \
             -c "Add :CFBundleIcons:CFBundlePrimaryIcon:CFBundleIconName string AppIcon" \
             "$PLIST"
 
+
+          # ========================================================
+          # 驗證 plist
+          # ========================================================
+
+          echo ""
+          echo "Checking Info.plist..."
+
+          plutil -lint "$PLIST"
+
+          echo ""
+          echo "App Icon configuration:"
+
+          /usr/libexec/PlistBuddy \
+            -c "Print :CFBundleIcons" \
+            "$PLIST"
+
+
+          # ========================================================
+          # 最終確認
+          # ========================================================
 
           echo ""
           echo "========================================"
@@ -521,6 +566,9 @@ EOF
             -type f \
             -print \
             | sort
+
+          echo ""
+          echo "✓ App Icon prepared successfully."
 
 
       # ============================================================
@@ -632,7 +680,6 @@ EOF
           echo "✓ Assets.car"
 
           echo ""
-
           echo "App bundle is valid."
 
 
@@ -653,6 +700,8 @@ EOF
           test -d Payload
 
           test -d Payload/UtilityTools.app
+
+          cd Payload/..
 
           zip \
             -r \
@@ -788,11 +837,9 @@ EOF
           echo "$ROOT_CONTENT"
 
           if [[ "$ROOT_CONTENT" != Payload/* ]]; then
-
             echo ""
             echo "ERROR:"
             echo "IPA does not contain Payload at root."
-
             exit 1
           fi
 
