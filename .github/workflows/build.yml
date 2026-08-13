@@ -1,6 +1,6 @@
 name: Build Utility IPA
 
-on:
+'on':
   workflow_dispatch:
 
 jobs:
@@ -18,7 +18,7 @@ jobs:
 
 
       # ============================================================
-      # 2. Check Project Files
+      # 2. 檢查專案檔案
       # ============================================================
       - name: Check Project Files
         shell: bash
@@ -38,8 +38,10 @@ jobs:
 
           files=(
             "Sources/Main.m"
+
             "Sources/AppDelegate.h"
             "Sources/AppDelegate.m"
+
             "Sources/HomeViewController.h"
             "Sources/HomeViewController.m"
 
@@ -68,6 +70,7 @@ jobs:
             "Sources/Tools/AboutViewController.m"
 
             "Info.plist"
+
             "AppIcon/AppIcon.png"
           )
 
@@ -75,30 +78,32 @@ jobs:
 
           for file in "${files[@]}"; do
             if [ -f "$file" ]; then
-              echo "OK: $file"
+              echo "✓ $file"
             else
-              echo "MISSING: $file"
+              echo "✗ MISSING: $file"
               failed=1
             fi
           done
 
+          echo ""
+
           if [ "$failed" -ne 0 ]; then
-            echo ""
-            echo "ERROR: Required files are missing."
+            echo "ERROR: One or more required files are missing."
             exit 1
           fi
 
-          echo ""
           echo "All required files found."
 
 
       # ============================================================
-      # 3. Clean
+      # 3. 清理舊檔案
       # ============================================================
       - name: Clean Build
         shell: bash
         run: |
           set -e
+
+          echo "Cleaning old build files..."
 
           rm -rf build
           rm -rf Payload
@@ -114,7 +119,7 @@ jobs:
 
 
       # ============================================================
-      # 4. Check Xcode
+      # 4. 檢查 Xcode / iOS SDK
       # ============================================================
       - name: Check iOS SDK
         shell: bash
@@ -129,8 +134,10 @@ jobs:
 
           echo ""
 
+          SDK_PATH=$(xcrun --sdk iphoneos --show-sdk-path)
+
           echo "iOS SDK:"
-          xcrun --sdk iphoneos --show-sdk-path
+          echo "$SDK_PATH"
 
           echo ""
 
@@ -139,7 +146,7 @@ jobs:
 
 
       # ============================================================
-      # 5. Compile Objective-C
+      # 5. 編譯 Objective-C
       # ============================================================
       - name: Compile UtilityTools
         shell: bash
@@ -184,28 +191,34 @@ jobs:
 
 
       # ============================================================
-      # 6. Verify Binary
+      # 6. 檢查編譯出來的執行檔
       # ============================================================
       - name: Verify Compiled Binary
         shell: bash
         run: |
           set -e
 
+          echo "========================================"
+          echo "       VERIFYING EXECUTABLE"
+          echo "========================================"
+
           test -f build/UtilityTools
 
-          echo "Executable:"
           file build/UtilityTools
 
           echo ""
 
-          xcrun --sdk iphoneos otool -hv build/UtilityTools
+          xcrun --sdk iphoneos \
+            otool -hv \
+            build/UtilityTools
 
           echo ""
+
           echo "Executable verification successful."
 
 
       # ============================================================
-      # 7. Create App Bundle
+      # 7. 建立 UtilityTools.app
       # ============================================================
       - name: Create App Bundle
         shell: bash
@@ -220,21 +233,34 @@ jobs:
 
           mkdir -p "$APP"
 
-          cp build/UtilityTools "$APP/UtilityTools"
-          cp Info.plist "$APP/Info.plist"
+          cp \
+            build/UtilityTools \
+            "$APP/UtilityTools"
 
-          printf 'APPL????' > "$APP/PkgInfo"
+          cp \
+            Info.plist \
+            "$APP/Info.plist"
 
-          chmod +x "$APP/UtilityTools"
+          printf 'APPL????' \
+            > "$APP/PkgInfo"
+
+          chmod +x \
+            "$APP/UtilityTools"
 
           echo ""
           echo "App bundle created."
 
-          find "$APP" -maxdepth 2 -type f -print | sort
+          echo ""
+
+          find "$APP" \
+            -maxdepth 2 \
+            -type f \
+            -print \
+            | sort
 
 
       # ============================================================
-      # 8. Prepare App Icon
+      # 8. 處理 App Icon
       # ============================================================
       - name: Prepare App Icon
         shell: bash
@@ -246,79 +272,151 @@ jobs:
           echo "========================================"
 
           APP="Payload/UtilityTools.app"
+          PLIST="$APP/Info.plist"
+
+          # --------------------------------------------------------
+          # 確認原始圖片
+          # --------------------------------------------------------
 
           if [ ! -f "AppIcon/AppIcon.png" ]; then
             echo "ERROR: AppIcon/AppIcon.png not found."
             exit 1
           fi
 
-          echo "OK: AppIcon/AppIcon.png"
+          echo "✓ Found AppIcon/AppIcon.png"
+
+          # --------------------------------------------------------
+          # 讀取原始圖片尺寸
+          # --------------------------------------------------------
 
           echo ""
-          echo "Checking image size..."
+          echo "Checking original icon size..."
 
-          WIDTH=$(sips -g pixelWidth AppIcon/AppIcon.png | tail -1 | awk '{print $2}')
-          HEIGHT=$(sips -g pixelHeight AppIcon/AppIcon.png | tail -1 | awk '{print $2}')
+          WIDTH=$(sips \
+            -g pixelWidth \
+            AppIcon/AppIcon.png \
+            | tail -1 \
+            | awk '{print $2}')
 
-          echo "Width:  $WIDTH"
-          echo "Height: $HEIGHT"
+          HEIGHT=$(sips \
+            -g pixelHeight \
+            AppIcon/AppIcon.png \
+            | tail -1 \
+            | awk '{print $2}')
 
-          if [ "$WIDTH" != "1024" ] || [ "$HEIGHT" != "1024" ]; then
+          echo "Original Width:  $WIDTH"
+          echo "Original Height: $HEIGHT"
+
+          # --------------------------------------------------------
+          # 自動轉成 1024x1024
+          # --------------------------------------------------------
+
+          echo ""
+          echo "Preparing 1024x1024 App Icon..."
+
+          rm -f build/AppIcon-1024.png
+
+          sips \
+            --resampleWidth 1024 \
+            --resampleHeight 1024 \
+            AppIcon/AppIcon.png \
+            --out build/AppIcon-1024.png \
+            >/dev/null
+
+          echo "✓ Icon resized."
+
+          # --------------------------------------------------------
+          # 驗證最後尺寸
+          # --------------------------------------------------------
+
+          FINAL_WIDTH=$(sips \
+            -g pixelWidth \
+            build/AppIcon-1024.png \
+            | tail -1 \
+            | awk '{print $2}')
+
+          FINAL_HEIGHT=$(sips \
+            -g pixelHeight \
+            build/AppIcon-1024.png \
+            | tail -1 \
+            | awk '{print $2}')
+
+          echo ""
+          echo "Final Width:  $FINAL_WIDTH"
+          echo "Final Height: $FINAL_HEIGHT"
+
+          if [ "$FINAL_WIDTH" != "1024" ] || [ "$FINAL_HEIGHT" != "1024" ]; then
             echo ""
-            echo "ERROR: AppIcon.png must be exactly 1024x1024."
+            echo "ERROR: Failed to create 1024x1024 icon."
             exit 1
           fi
 
-          echo "Icon size OK."
+          echo "✓ Icon size is 1024x1024"
 
 
-          # --------------------------------------------------------
-          # Create asset catalog
-          # --------------------------------------------------------
+          # ========================================================
+          # 建立 Assets.xcassets
+          # ========================================================
+
+          echo ""
+          echo "Creating Assets.xcassets..."
 
           rm -rf build/Assets.xcassets
 
-          mkdir -p build/Assets.xcassets/AppIcon.appiconset
+          mkdir -p \
+            build/Assets.xcassets/AppIcon.appiconset
 
           cp \
-            AppIcon/AppIcon.png \
+            build/AppIcon-1024.png \
             build/Assets.xcassets/AppIcon.appiconset/AppIcon.png
 
 
-          # --------------------------------------------------------
-          # Create Contents.json
-          # --------------------------------------------------------
+          # ========================================================
+          # 建立 Contents.json
+          # ========================================================
 
-          printf '%s\n' \
-          '{' \
-          '  "images" : [' \
-          '    {' \
-          '      "filename" : "AppIcon.png",' \
-          '      "idiom" : "ios-marketing",' \
-          '      "scale" : "1x",' \
-          '      "size" : "1024x1024"' \
-          '    }' \
-          '  ],' \
-          '  "info" : {' \
-          '    "author" : "xcode",' \
-          '    "version" : 1' \
-          '  }' \
-          '}' \
-          > build/Assets.xcassets/AppIcon.appiconset/Contents.json
+          cat > build/Assets.xcassets/Contents.json <<'EOF'
+{
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}
+EOF
+
+
+          cat > build/Assets.xcassets/AppIcon.appiconset/Contents.json <<'EOF'
+{
+  "images" : [
+    {
+      "filename" : "AppIcon.png",
+      "idiom" : "ios-marketing",
+      "scale" : "1x",
+      "size" : "1024x1024"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}
+EOF
+
+          echo "✓ Assets.xcassets created."
+
+
+          # ========================================================
+          # 編譯 Assets.car
+          # ========================================================
 
           echo ""
-          echo "Asset catalog created."
-
-
-          # --------------------------------------------------------
-          # Compile Assets.car
-          # --------------------------------------------------------
+          echo "========================================"
+          echo "          COMPILING ASSETS"
+          echo "========================================"
 
           rm -rf build/CompiledAssets
-          mkdir -p build/CompiledAssets
 
-          echo ""
-          echo "Compiling Assets.car..."
+          mkdir -p build/CompiledAssets
 
           xcrun actool \
             --output-format human-readable-text \
@@ -330,66 +428,84 @@ jobs:
 
           echo ""
 
+
+          # ========================================================
+          # 確認 Assets.car
+          # ========================================================
+
           if [ ! -f "build/CompiledAssets/Assets.car" ]; then
+
             echo "ERROR: Assets.car was not generated."
 
             echo ""
             echo "Compiled assets:"
-            find build/CompiledAssets -maxdepth 2 -print || true
+
+            find build/CompiledAssets \
+              -maxdepth 3 \
+              -print \
+              || true
 
             exit 1
           fi
 
-          echo "Assets.car generated successfully."
+          echo "✓ Assets.car generated successfully."
 
 
-          # --------------------------------------------------------
-          # Copy Assets.car
-          # --------------------------------------------------------
+          # ========================================================
+          # 複製 Assets.car 到 App
+          # ========================================================
 
           cp \
             build/CompiledAssets/Assets.car \
             "$APP/Assets.car"
 
+          echo "✓ Assets.car copied to UtilityTools.app."
+
+
+          # ========================================================
+          # 設定 Info.plist
+          # ========================================================
+
           echo ""
-          echo "Assets.car copied to UtilityTools.app."
-
-
-          # --------------------------------------------------------
-          # Configure Info.plist
-          # --------------------------------------------------------
-
-          PLIST="$APP/Info.plist"
+          echo "Configuring Info.plist..."
 
           /usr/libexec/PlistBuddy \
             -c "Delete :CFBundleIcons" \
             "$PLIST" \
-            2>/dev/null || true
+            2>/dev/null \
+            || true
 
           /usr/libexec/PlistBuddy \
             -c "Delete :CFBundleIcons~ipad" \
             "$PLIST" \
-            2>/dev/null || true
+            2>/dev/null \
+            || true
+
 
           /usr/libexec/PlistBuddy \
             -c "Add :CFBundleIcons dict" \
             "$PLIST"
 
+
           /usr/libexec/PlistBuddy \
             -c "Add :CFBundleIcons:CFBundlePrimaryIcon dict" \
             "$PLIST"
+
 
           /usr/libexec/PlistBuddy \
             -c "Add :CFBundleIcons:CFBundlePrimaryIcon:CFBundleIconFiles array" \
             "$PLIST"
 
+
           /usr/libexec/PlistBuddy \
             -c "Add :CFBundleIcons:CFBundlePrimaryIcon:CFBundleIconFiles:0 string AppIcon" \
             "$PLIST"
 
+
           /usr/libexec/PlistBuddy \
             -c "Add :CFBundleIcons:CFBundlePrimaryIcon:CFBundleIconName string AppIcon" \
             "$PLIST"
+
 
           echo ""
           echo "========================================"
@@ -397,29 +513,36 @@ jobs:
           echo "========================================"
 
           echo ""
-          echo "App bundle:"
-          find "$APP" -maxdepth 2 -type f -print | sort
+
+          echo "App bundle contents:"
+
+          find "$APP" \
+            -maxdepth 2 \
+            -type f \
+            -print \
+            | sort
 
 
       # ============================================================
-      # 9. Verify Info.plist
+      # 9. 檢查 Info.plist
       # ============================================================
       - name: Verify Info.plist
         shell: bash
         run: |
           set -e
 
-          PLIST="Payload/UtilityTools.app/Info.plist"
-
           echo "========================================"
           echo "          VERIFYING INFO.PLIST"
           echo "========================================"
+
+          PLIST="Payload/UtilityTools.app/Info.plist"
 
           test -f "$PLIST"
 
           plutil -lint "$PLIST"
 
           echo ""
+
           echo "Bundle Identifier:"
 
           /usr/libexec/PlistBuddy \
@@ -427,6 +550,7 @@ jobs:
             "$PLIST"
 
           echo ""
+
           echo "Bundle Executable:"
 
           /usr/libexec/PlistBuddy \
@@ -434,14 +558,17 @@ jobs:
             "$PLIST"
 
           echo ""
+
           echo "Display Name:"
 
           /usr/libexec/PlistBuddy \
             -c "Print :CFBundleDisplayName" \
             "$PLIST" \
-            2>/dev/null || true
+            2>/dev/null \
+            || echo "CFBundleDisplayName not specified."
 
           echo ""
+
           echo "App Icon:"
 
           /usr/libexec/PlistBuddy \
@@ -449,11 +576,12 @@ jobs:
             "$PLIST"
 
           echo ""
+
           echo "Info.plist verification successful."
 
 
       # ============================================================
-      # 10. Remove Signature
+      # 10. 移除任何舊簽名
       # ============================================================
       - name: Remove Existing Signature
         shell: bash
@@ -462,44 +590,54 @@ jobs:
 
           APP="Payload/UtilityTools.app"
 
-          rm -rf "$APP/_CodeSignature"
-          rm -f "$APP/embedded.mobileprovision"
+          echo "Removing existing signature data..."
+
+          rm -rf \
+            "$APP/_CodeSignature"
+
+          rm -f \
+            "$APP/embedded.mobileprovision"
 
           echo "Existing signature information removed."
 
 
       # ============================================================
-      # 11. Verify App Bundle
+      # 11. 檢查 App Bundle
       # ============================================================
       - name: Verify App Bundle
         shell: bash
         run: |
           set -e
 
-          APP="Payload/UtilityTools.app"
-
           echo "========================================"
           echo "         VERIFYING APP BUNDLE"
           echo "========================================"
 
+          APP="Payload/UtilityTools.app"
+
           test -d "$APP"
+
           test -f "$APP/UtilityTools"
+
           test -f "$APP/Info.plist"
+
           test -f "$APP/PkgInfo"
+
           test -f "$APP/Assets.car"
 
-          echo "OK: UtilityTools.app"
-          echo "OK: UtilityTools executable"
-          echo "OK: Info.plist"
-          echo "OK: PkgInfo"
-          echo "OK: Assets.car"
+          echo "✓ UtilityTools.app"
+          echo "✓ UtilityTools executable"
+          echo "✓ Info.plist"
+          echo "✓ PkgInfo"
+          echo "✓ Assets.car"
 
           echo ""
+
           echo "App bundle is valid."
 
 
       # ============================================================
-      # 12. Create IPA
+      # 12. 建立 Unsigned IPA
       # ============================================================
       - name: Create Unsigned IPA
         shell: bash
@@ -513,6 +651,7 @@ jobs:
           rm -f UtilityTools-unsigned.ipa
 
           test -d Payload
+
           test -d Payload/UtilityTools.app
 
           zip \
@@ -522,13 +661,14 @@ jobs:
             Payload
 
           echo ""
+
           echo "Unsigned IPA created."
 
           ls -lh UtilityTools-unsigned.ipa
 
 
       # ============================================================
-      # 13. Verify IPA
+      # 13. 驗證 IPA
       # ============================================================
       - name: Verify IPA
         shell: bash
@@ -543,16 +683,23 @@ jobs:
 
           echo ""
           echo "IPA size:"
+
           ls -lh UtilityTools-unsigned.ipa
 
           echo ""
-          echo "IPA contents:"
+          echo "========================================"
+          echo "            IPA CONTENTS"
+          echo "========================================"
+
           unzip -l UtilityTools-unsigned.ipa
 
           echo ""
-          echo "Extracting test copy..."
+          echo "========================================"
+          echo "         EXTRACTING TEST COPY"
+          echo "========================================"
 
           rm -rf ipa_verify
+
           mkdir -p ipa_verify
 
           unzip \
@@ -561,76 +708,100 @@ jobs:
             -d ipa_verify
 
           echo ""
-          echo "Checking structure..."
+          echo "Checking required IPA structure..."
 
-          test -d ipa_verify/Payload
-          test -d ipa_verify/Payload/UtilityTools.app
+          test -d \
+            ipa_verify/Payload
 
-          test -f ipa_verify/Payload/UtilityTools.app/UtilityTools
-          test -f ipa_verify/Payload/UtilityTools.app/Info.plist
-          test -f ipa_verify/Payload/UtilityTools.app/PkgInfo
-          test -f ipa_verify/Payload/UtilityTools.app/Assets.car
+          test -d \
+            ipa_verify/Payload/UtilityTools.app
+
+          test -f \
+            ipa_verify/Payload/UtilityTools.app/UtilityTools
+
+          test -f \
+            ipa_verify/Payload/UtilityTools.app/Info.plist
+
+          test -f \
+            ipa_verify/Payload/UtilityTools.app/PkgInfo
+
+          test -f \
+            ipa_verify/Payload/UtilityTools.app/Assets.car
 
           echo ""
-          echo "OK: Payload/"
-          echo "OK: UtilityTools.app/"
-          echo "OK: executable"
-          echo "OK: Info.plist"
-          echo "OK: PkgInfo"
-          echo "OK: Assets.car"
+          echo "✓ Payload/"
+          echo "✓ Payload/UtilityTools.app/"
+          echo "✓ UtilityTools executable"
+          echo "✓ Info.plist"
+          echo "✓ PkgInfo"
+          echo "✓ Assets.car"
 
           echo ""
           echo "========================================"
           echo "       APP ICON VERIFICATION"
           echo "========================================"
 
+          echo ""
+          echo "Checking Assets.car..."
+
           ls -lh \
             ipa_verify/Payload/UtilityTools.app/Assets.car
 
           echo ""
+          echo "Checking Info.plist App Icon..."
 
           /usr/libexec/PlistBuddy \
             -c "Print :CFBundleIcons" \
             ipa_verify/Payload/UtilityTools.app/Info.plist
 
           echo ""
-          echo "IPA structure is valid."
+          echo "========================================"
+          echo "       IPA STRUCTURE IS VALID"
+          echo "========================================"
+
+          echo ""
+          echo "Expected structure:"
+
+          find ipa_verify \
+            -maxdepth 3 \
+            -print \
+            | sort
 
           rm -rf ipa_verify
 
 
       # ============================================================
-      # 14. Check IPA Root
+      # 14. 檢查 IPA Root Structure
       # ============================================================
       - name: Check IPA Root Structure
         shell: bash
         run: |
           set -e
 
-          echo "========================================"
-          echo "          CHECKING IPA ROOT"
-          echo "========================================"
+          echo "Checking IPA root..."
 
-          ROOT_CONTENT=$(unzip -Z1 UtilityTools-unsigned.ipa | head -1)
+          ROOT_CONTENT=$(unzip -Z1 \
+            UtilityTools-unsigned.ipa \
+            | head -1)
 
           echo "First entry:"
           echo "$ROOT_CONTENT"
 
-          case "$ROOT_CONTENT" in
-            Payload/*)
-              echo ""
-              echo "OK: Payload is at IPA root."
-              ;;
-            *)
-              echo ""
-              echo "ERROR: Payload is not at IPA root."
-              exit 1
-              ;;
-          esac
+          if [[ "$ROOT_CONTENT" != Payload/* ]]; then
+
+            echo ""
+            echo "ERROR:"
+            echo "IPA does not contain Payload at root."
+
+            exit 1
+          fi
+
+          echo ""
+          echo "✓ IPA root structure is correct."
 
 
       # ============================================================
-      # 15. Upload IPA
+      # 15. 上傳 IPA
       # ============================================================
       - name: Upload IPA
         uses: actions/upload-artifact@v4
@@ -672,9 +843,9 @@ jobs:
           echo "App Icon:"
           echo "AppIcon/AppIcon.png"
           echo "        ↓"
-          echo "Assets.xcassets"
+          echo "1024x1024 AppIcon.png"
           echo "        ↓"
-          echo "AppIcon.appiconset"
+          echo "Assets.xcassets"
           echo "        ↓"
           echo "Assets.car"
           echo "        ↓"
