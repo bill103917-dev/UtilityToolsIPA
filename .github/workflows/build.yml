@@ -272,8 +272,9 @@ jobs:
           APP="Payload/UtilityTools.app"
           PLIST="$APP/Info.plist"
 
+
           # ========================================================
-          # 檢查原始 AppIcon
+          # 檢查原始圖片
           # ========================================================
 
           if [ ! -f "AppIcon/AppIcon.png" ]; then
@@ -283,8 +284,9 @@ jobs:
 
           echo "✓ Found AppIcon/AppIcon.png"
 
+
           # ========================================================
-          # 顯示原始圖片尺寸
+          # 讀取原始尺寸
           # ========================================================
 
           echo ""
@@ -295,24 +297,30 @@ jobs:
             -g pixelHeight \
             AppIcon/AppIcon.png
 
-          ORIGINAL_WIDTH=$(
-            sips -g pixelWidth AppIcon/AppIcon.png \
+          WIDTH=$(sips \
+            -g pixelWidth \
+            AppIcon/AppIcon.png \
             | tail -1 \
-            | awk '{print $2}'
-          )
+            | awk '{print $2}')
 
-          ORIGINAL_HEIGHT=$(
-            sips -g pixelHeight AppIcon/AppIcon.png \
+          HEIGHT=$(sips \
+            -g pixelHeight \
+            AppIcon/AppIcon.png \
             | tail -1 \
-            | awk '{print $2}'
-          )
+            | awk '{print $2}')
 
           echo ""
-          echo "Original Width:  $ORIGINAL_WIDTH"
-          echo "Original Height: $ORIGINAL_HEIGHT"
+          echo "Original Width:  $WIDTH"
+          echo "Original Height: $HEIGHT"
+
 
           # ========================================================
-          # 自動轉成 1024x1024
+          # 建立真正的 1024x1024 圖片
+          #
+          # 注意：
+          # 使用 sips -z 強制指定高度與寬度。
+          # 不使用 --resampleWidth / --resampleHeight，
+          # 避免之前出現 836x836 的結果。
           # ========================================================
 
           echo ""
@@ -320,34 +328,46 @@ jobs:
 
           rm -f build/AppIcon-1024.png
 
-          sips \
-            --resampleWidth 1024 \
-            --resampleHeight 1024 \
+          cp \
             AppIcon/AppIcon.png \
-            --out build/AppIcon-1024.png \
+            build/AppIcon-1024.png
+
+          sips \
+            -z 1024 1024 \
+            build/AppIcon-1024.png \
             >/dev/null
 
           echo "✓ Icon resized."
 
+
           # ========================================================
-          # 驗證 1024x1024
+          # 驗證最後尺寸
           # ========================================================
 
-          FINAL_WIDTH=$(
-            sips -g pixelWidth build/AppIcon-1024.png \
-            | tail -1 \
-            | awk '{print $2}'
-          )
+          echo ""
+          echo "Final icon size:"
 
-          FINAL_HEIGHT=$(
-            sips -g pixelHeight build/AppIcon-1024.png \
+          sips \
+            -g pixelWidth \
+            -g pixelHeight \
+            build/AppIcon-1024.png
+
+          FINAL_WIDTH=$(sips \
+            -g pixelWidth \
+            build/AppIcon-1024.png \
             | tail -1 \
-            | awk '{print $2}'
-          )
+            | awk '{print $2}')
+
+          FINAL_HEIGHT=$(sips \
+            -g pixelHeight \
+            build/AppIcon-1024.png \
+            | tail -1 \
+            | awk '{print $2}')
 
           echo ""
           echo "Final Width:  $FINAL_WIDTH"
           echo "Final Height: $FINAL_HEIGHT"
+
 
           if [ "$FINAL_WIDTH" != "1024" ] || [ "$FINAL_HEIGHT" != "1024" ]; then
             echo ""
@@ -355,7 +375,8 @@ jobs:
             exit 1
           fi
 
-          echo "✓ Icon size is 1024x1024"
+          echo ""
+          echo "✓ Icon size is exactly 1024x1024."
 
 
           # ========================================================
@@ -364,7 +385,7 @@ jobs:
 
           echo ""
           echo "========================================"
-          echo "        CREATING ASSET CATALOG"
+          echo "       CREATING ASSET CATALOG"
           echo "========================================"
 
           rm -rf build/Assets.xcassets
@@ -372,11 +393,14 @@ jobs:
           mkdir -p \
             build/Assets.xcassets/AppIcon.appiconset
 
+
+          # ========================================================
+          # 複製 Icon
+          # ========================================================
+
           cp \
             build/AppIcon-1024.png \
             build/Assets.xcassets/AppIcon.appiconset/AppIcon.png
-
-          echo "✓ AppIcon.png copied."
 
 
           # ========================================================
@@ -414,20 +438,8 @@ jobs:
           '}' \
           > build/Assets.xcassets/AppIcon.appiconset/Contents.json
 
-          echo "✓ Assets.xcassets created."
-
-
-          # ========================================================
-          # 顯示 Asset Catalog
-          # ========================================================
-
           echo ""
-          echo "Asset catalog structure:"
-
-          find build/Assets.xcassets \
-            -maxdepth 3 \
-            -print \
-            | sort
+          echo "✓ Assets.xcassets created."
 
 
           # ========================================================
@@ -445,8 +457,6 @@ jobs:
 
           xcrun actool \
             --output-format human-readable-text \
-            --notices \
-            --warnings \
             --platform iphoneos \
             --minimum-deployment-target 15.0 \
             --app-icon AppIcon \
@@ -479,7 +489,7 @@ jobs:
 
 
           # ========================================================
-          # 複製 Assets.car 到 App
+          # 複製 Assets.car
           # ========================================================
 
           cp \
@@ -494,9 +504,7 @@ jobs:
           # ========================================================
 
           echo ""
-          echo "========================================"
-          echo "        CONFIGURING INFO.PLIST"
-          echo "========================================"
+          echo "Configuring Info.plist..."
 
           /usr/libexec/PlistBuddy \
             -c "Delete :CFBundleIcons" \
@@ -510,47 +518,31 @@ jobs:
             2>/dev/null \
             || true
 
+
           /usr/libexec/PlistBuddy \
             -c "Add :CFBundleIcons dict" \
             "$PLIST"
+
 
           /usr/libexec/PlistBuddy \
             -c "Add :CFBundleIcons:CFBundlePrimaryIcon dict" \
             "$PLIST"
 
+
           /usr/libexec/PlistBuddy \
             -c "Add :CFBundleIcons:CFBundlePrimaryIcon:CFBundleIconFiles array" \
             "$PLIST"
+
 
           /usr/libexec/PlistBuddy \
             -c "Add :CFBundleIcons:CFBundlePrimaryIcon:CFBundleIconFiles:0 string AppIcon" \
             "$PLIST"
 
+
           /usr/libexec/PlistBuddy \
             -c "Add :CFBundleIcons:CFBundlePrimaryIcon:CFBundleIconName string AppIcon" \
             "$PLIST"
 
-
-          # ========================================================
-          # 驗證 plist
-          # ========================================================
-
-          echo ""
-          echo "Checking Info.plist..."
-
-          plutil -lint "$PLIST"
-
-          echo ""
-          echo "App Icon configuration:"
-
-          /usr/libexec/PlistBuddy \
-            -c "Print :CFBundleIcons" \
-            "$PLIST"
-
-
-          # ========================================================
-          # 最終確認
-          # ========================================================
 
           echo ""
           echo "========================================"
@@ -566,9 +558,6 @@ jobs:
             -type f \
             -print \
             | sort
-
-          echo ""
-          echo "✓ App Icon prepared successfully."
 
 
       # ============================================================
@@ -629,7 +618,7 @@ jobs:
 
 
       # ============================================================
-      # 10. 移除任何舊簽名
+      # 10. 移除舊簽名
       # ============================================================
       - name: Remove Existing Signature
         shell: bash
@@ -695,13 +684,13 @@ jobs:
           echo "          CREATING UNSIGNED IPA"
           echo "========================================"
 
-          rm -f UtilityTools-unsigned.ipa
+          rm -f \
+            UtilityTools-unsigned.ipa
 
           test -d Payload
 
-          test -d Payload/UtilityTools.app
-
-          cd Payload/..
+          test -d \
+            Payload/UtilityTools.app
 
           zip \
             -r \
@@ -713,7 +702,8 @@ jobs:
 
           echo "Unsigned IPA created."
 
-          ls -lh UtilityTools-unsigned.ipa
+          ls -lh \
+            UtilityTools-unsigned.ipa
 
 
       # ============================================================
@@ -728,28 +718,33 @@ jobs:
           echo "            VERIFYING IPA"
           echo "========================================"
 
-          test -f UtilityTools-unsigned.ipa
+          test -f \
+            UtilityTools-unsigned.ipa
 
           echo ""
           echo "IPA size:"
 
-          ls -lh UtilityTools-unsigned.ipa
+          ls -lh \
+            UtilityTools-unsigned.ipa
 
           echo ""
           echo "========================================"
           echo "            IPA CONTENTS"
           echo "========================================"
 
-          unzip -l UtilityTools-unsigned.ipa
+          unzip -l \
+            UtilityTools-unsigned.ipa
 
           echo ""
           echo "========================================"
           echo "         EXTRACTING TEST COPY"
           echo "========================================"
 
-          rm -rf ipa_verify
+          rm -rf \
+            ipa_verify
 
-          mkdir -p ipa_verify
+          mkdir -p \
+            ipa_verify
 
           unzip \
             -q \
@@ -816,7 +811,8 @@ jobs:
             -print \
             | sort
 
-          rm -rf ipa_verify
+          rm -rf \
+            ipa_verify
 
 
       # ============================================================
@@ -837,9 +833,11 @@ jobs:
           echo "$ROOT_CONTENT"
 
           if [[ "$ROOT_CONTENT" != Payload/* ]]; then
+
             echo ""
             echo "ERROR:"
             echo "IPA does not contain Payload at root."
+
             exit 1
           fi
 
@@ -859,7 +857,7 @@ jobs:
 
 
       # ============================================================
-      # 16. Build Summary
+      # 16. Build 完成資訊
       # ============================================================
       - name: Build Summary
         shell: bash
@@ -871,7 +869,8 @@ jobs:
 
           echo ""
           echo "IPA:"
-          ls -lh UtilityTools-unsigned.ipa
+          ls -lh \
+            UtilityTools-unsigned.ipa
 
           echo ""
           echo "Output:"
