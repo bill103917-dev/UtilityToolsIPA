@@ -7,6 +7,9 @@
 @property (nonatomic, strong) UITextField *minField;
 @property (nonatomic, strong) UITextField *maxField;
 
+@property (nonatomic, strong) UIButton *copyButton;
+@property (nonatomic, strong) NSString *currentResult;
+
 @end
 
 @implementation RandomViewController
@@ -67,11 +70,26 @@
                        action:@selector(generateRandomNumber)
              forControlEvents:UIControlEventTouchUpInside];
 
+    // MARK: - 複製結果按鈕
+
+    self.copyButton =
+        MakeButton(@"📋 複製結果",
+                   [UIColor systemBlueColor]);
+
+    [self.copyButton addTarget:self
+                        action:@selector(copyResult)
+              forControlEvents:UIControlEventTouchUpInside];
+
+    // 一開始沒有結果，所以不能複製
+    self.copyButton.enabled = NO;
+    self.copyButton.alpha = 0.45;
+
     [self.view addSubview:title];
     [self.view addSubview:self.minField];
     [self.view addSubview:self.maxField];
     [self.view addSubview:self.resultLabel];
     [self.view addSubview:generateButton];
+    [self.view addSubview:self.copyButton];
 
     [NSLayoutConstraint activateConstraints:@[
         [title.topAnchor
@@ -156,7 +174,26 @@
          constant:-25],
 
         [generateButton.heightAnchor
-         constraintEqualToConstant:60]
+         constraintEqualToConstant:60],
+
+        // 複製按鈕
+        [self.copyButton.topAnchor
+         constraintEqualToAnchor:
+         generateButton.bottomAnchor
+         constant:15],
+
+        [self.copyButton.leadingAnchor
+         constraintEqualToAnchor:
+         self.view.leadingAnchor
+         constant:25],
+
+        [self.copyButton.trailingAnchor
+         constraintEqualToAnchor:
+         self.view.trailingAnchor
+         constant:-25],
+
+        [self.copyButton.heightAnchor
+         constraintEqualToConstant:52]
     ]];
 }
 
@@ -180,6 +217,9 @@
         maxText.length == 0) {
 
         self.resultLabel.text = @"請輸入完整範圍";
+
+        [self clearResult];
+
         return;
     }
 
@@ -205,6 +245,8 @@
         self.resultLabel.text =
             @"只能輸入整數";
 
+        [self clearResult];
+
         return;
     }
 
@@ -212,6 +254,8 @@
 
         self.resultLabel.text =
             @"最大值不能小於最小值";
+
+        [self clearResult];
 
         return;
     }
@@ -227,6 +271,8 @@
         self.resultLabel.text =
             @"數字範圍太大";
 
+        [self clearResult];
+
         return;
     }
 
@@ -236,12 +282,116 @@
     NSInteger result =
         minValue + (NSInteger)randomValue;
 
+    // 儲存真正的結果
+    self.currentResult =
+        [NSString stringWithFormat:@"%ld",
+         (long)result];
+
     self.resultLabel.text =
         [NSString stringWithFormat:
             @"結果：%ld",
             (long)result];
 
+    // 啟用複製按鈕
+    self.copyButton.enabled = YES;
+    self.copyButton.alpha = 1.0;
+
+    [self.copyButton setTitle:@"📋 複製結果"
+                      forState:UIControlStateNormal];
+
     [self animateResult];
+}
+
+#pragma mark - Clear Result
+
+- (void)clearResult {
+
+    self.currentResult = nil;
+
+    self.copyButton.enabled = NO;
+    self.copyButton.alpha = 0.45;
+
+    [self.copyButton setTitle:@"📋 複製結果"
+                      forState:UIControlStateNormal];
+}
+
+#pragma mark - Copy
+
+- (void)copyResult {
+
+    if (self.currentResult.length == 0) {
+        return;
+    }
+
+    // 複製純數字
+    UIPasteboard *pasteboard =
+        [UIPasteboard generalPasteboard];
+
+    pasteboard.string = self.currentResult;
+
+    // 按鈕動畫
+    [UIView animateWithDuration:0.1
+                     animations:^{
+
+        self.copyButton.transform =
+            CGAffineTransformMakeScale(0.92, 0.92);
+
+    } completion:^(BOOL finished) {
+
+        [UIView animateWithDuration:0.18
+                         animations:^{
+
+            self.copyButton.transform =
+                CGAffineTransformIdentity;
+        }];
+    }];
+
+    // 修改按鈕文字
+    [self.copyButton setTitle:@"✓ 已複製"
+                      forState:UIControlStateNormal];
+
+    // 讓按鈕稍微淡一下再恢復
+    [UIView animateWithDuration:0.15
+                     animations:^{
+
+        self.copyButton.alpha = 0.7;
+
+    } completion:^(BOOL finished) {
+
+        [UIView animateWithDuration:0.2
+                         animations:^{
+
+            self.copyButton.alpha = 1.0;
+        }];
+    }];
+
+    // 1 秒後恢復
+    [NSObject cancelPreviousPerformRequestsWithTarget:self
+                                             selector:@selector(resetCopyButton)
+                                               object:nil];
+
+    [self performSelector:@selector(resetCopyButton)
+               withObject:nil
+               afterDelay:1.0];
+}
+
+#pragma mark - Reset Copy Button
+
+- (void)resetCopyButton {
+
+    if (self.currentResult.length == 0) {
+        return;
+    }
+
+    [UIView transitionWithView:self.copyButton
+                      duration:0.2
+                       options:UIViewAnimationOptionTransitionCrossDissolve
+                    animations:^{
+
+        [self.copyButton setTitle:@"📋 複製結果"
+                          forState:UIControlStateNormal];
+
+    } completion:nil];
 }
 
 #pragma mark - Animation
