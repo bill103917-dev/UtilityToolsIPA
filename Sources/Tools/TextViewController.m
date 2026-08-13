@@ -129,10 +129,57 @@
 
 - (void)textViewDidChange:(UITextView *)textView {
 
+    /*
+     iOS 注音 / 中文輸入法在選字前會處於
+     「組字中」狀態。
+
+     此時 textView 可能包含 marked text，
+     如果直接使用 text.length，
+     字數就會暫時被組字內容影響。
+
+     所以組字中的期間先不要更新字數。
+     等使用者選字完成後，iOS 會再次觸發
+     textViewDidChange，再重新計算。
+     */
+
+    if (textView.markedTextRange != nil) {
+        return;
+    }
+
+    [self updateCharacterCount];
+}
+
+#pragma mark - Character Count
+
+- (void)updateCharacterCount {
+
+    NSString *text = self.textView.text ?: @"";
+
+    __block NSUInteger count = 0;
+
+    /*
+     使用「Unicode 組合字元」計算。
+
+     比起 NSString.length，
+     這種方式對 Emoji、特殊 Unicode 字元
+     會比較準確。
+     */
+
+    [text enumerateSubstringsInRange:
+              NSMakeRange(0, text.length)
+             options:NSStringEnumerationByComposedCharacterSequences
+          usingBlock:^(NSString *substring,
+                       NSRange substringRange,
+                       NSRange enclosingRange,
+                       BOOL *stop) {
+
+        count++;
+    }];
+
     self.countLabel.text =
         [NSString stringWithFormat:
             @"字數：%lu",
-            (unsigned long)textView.text.length];
+            (unsigned long)count];
 }
 
 #pragma mark - Clear
@@ -141,7 +188,7 @@
 
     self.textView.text = @"";
 
-    [self textViewDidChange:self.textView];
+    [self updateCharacterCount];
 
     [self.textView becomeFirstResponder];
 }
@@ -229,6 +276,7 @@
     ]];
 
     toast.alpha = 0;
+
     toast.transform =
         CGAffineTransformMakeScale(0.7, 0.7);
 
@@ -236,10 +284,11 @@
                      animations:^{
 
         toast.alpha = 1;
+
         toast.transform =
             CGAffineTransformIdentity;
-    }
-                     completion:^(BOOL finished) {
+
+    } completion:^(BOOL finished) {
 
         [UIView animateWithDuration:0.25
                               delay:1.0
@@ -247,11 +296,11 @@
                          animations:^{
 
             toast.alpha = 0;
+
             toast.transform =
                 CGAffineTransformMakeScale(0.7, 0.7);
 
-        }
-                         completion:^(BOOL finished) {
+        } completion:^(BOOL finished) {
 
             [toast removeFromSuperview];
         }];
