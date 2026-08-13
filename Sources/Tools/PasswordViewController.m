@@ -23,12 +23,143 @@
     self.includeNumbers = YES;
     self.includeSymbols = YES;
 
+    // =========================================================
+    // Scroll View
+    // =========================================================
+
+    UIScrollView *scrollView =
+        [[UIScrollView alloc] init];
+
+    scrollView.translatesAutoresizingMaskIntoConstraints = NO;
+    scrollView.alwaysBounceVertical = YES;
+    scrollView.showsVerticalScrollIndicator = NO;
+
+    [self.view addSubview:scrollView];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [scrollView.topAnchor
+         constraintEqualToAnchor:
+         self.view.safeAreaLayoutGuide.topAnchor],
+
+        [scrollView.leadingAnchor
+         constraintEqualToAnchor:
+         self.view.leadingAnchor],
+
+        [scrollView.trailingAnchor
+         constraintEqualToAnchor:
+         self.view.trailingAnchor],
+
+        [scrollView.bottomAnchor
+         constraintEqualToAnchor:
+         self.view.bottomAnchor]
+    ]];
+
+    // =========================================================
+    // Content View
+    // =========================================================
+
+    UIView *contentView =
+        [[UIView alloc] init];
+
+    contentView.translatesAutoresizingMaskIntoConstraints = NO;
+
+    [scrollView addSubview:contentView];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [contentView.topAnchor
+         constraintEqualToAnchor:
+         scrollView.contentLayoutGuide.topAnchor],
+
+        [contentView.leadingAnchor
+         constraintEqualToAnchor:
+         scrollView.contentLayoutGuide.leadingAnchor],
+
+        [contentView.trailingAnchor
+         constraintEqualToAnchor:
+         scrollView.contentLayoutGuide.trailingAnchor],
+
+        [contentView.bottomAnchor
+         constraintEqualToAnchor:
+         scrollView.contentLayoutGuide.bottomAnchor],
+
+        // 讓內容寬度跟螢幕一樣
+        [contentView.widthAnchor
+         constraintEqualToAnchor:
+         scrollView.frameLayoutGuide.widthAnchor]
+    ]];
+
+    // =========================================================
+    // 主 Stack
+    // =========================================================
+
+    UIStackView *stack =
+        [[UIStackView alloc] init];
+
+    stack.axis =
+        UILayoutConstraintAxisVertical;
+
+    stack.alignment =
+        UIStackViewAlignmentFill;
+
+    stack.distribution =
+        UIStackViewDistributionFill;
+
+    stack.spacing = 18;
+
+    stack.translatesAutoresizingMaskIntoConstraints = NO;
+
+    [contentView addSubview:stack];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [stack.topAnchor
+         constraintEqualToAnchor:
+         contentView.topAnchor
+         constant:25],
+
+        [stack.leadingAnchor
+         constraintEqualToAnchor:
+         contentView.leadingAnchor
+         constant:20],
+
+        [stack.trailingAnchor
+         constraintEqualToAnchor:
+         contentView.trailingAnchor
+         constant:-20],
+
+        [stack.bottomAnchor
+         constraintEqualToAnchor:
+         contentView.bottomAnchor
+         constant:-25]
+    ]];
+
+    // =========================================================
+    // 標題
+    // =========================================================
+
     UILabel *title =
         MakeLabel(@"🔐 隨機字串產生器",
                   28,
                   UIFontWeightBold);
 
-    title.textAlignment = NSTextAlignmentCenter;
+    title.textAlignment =
+        NSTextAlignmentCenter;
+
+    [stack addArrangedSubview:title];
+
+    // =========================================================
+    // 結果區
+    // =========================================================
+
+    UIView *resultContainer =
+        [[UIView alloc] init];
+
+    resultContainer.backgroundColor =
+        [UIColor secondarySystemBackgroundColor];
+
+    resultContainer.layer.cornerRadius = 16;
+    resultContainer.clipsToBounds = YES;
+
+    resultContainer.translatesAutoresizingMaskIntoConstraints = NO;
 
     self.resultLabel =
         MakeLabel(@"點擊按鈕產生",
@@ -38,17 +169,47 @@
     self.resultLabel.textAlignment =
         NSTextAlignmentCenter;
 
-    // 允許長字串換行
     self.resultLabel.numberOfLines = 0;
 
     self.resultLabel.lineBreakMode =
         NSLineBreakByCharWrapping;
 
-    self.resultLabel.backgroundColor =
-        [UIColor secondarySystemBackgroundColor];
+    self.resultLabel.adjustsFontSizeToFitWidth = NO;
 
-    self.resultLabel.layer.cornerRadius = 14;
-    self.resultLabel.clipsToBounds = YES;
+    self.resultLabel.translatesAutoresizingMaskIntoConstraints = NO;
+
+    [resultContainer addSubview:self.resultLabel];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [resultContainer.heightAnchor
+         constraintEqualToConstant:105],
+
+        [self.resultLabel.leadingAnchor
+         constraintEqualToAnchor:
+         resultContainer.leadingAnchor
+         constant:15],
+
+        [self.resultLabel.trailingAnchor
+         constraintEqualToAnchor:
+         resultContainer.trailingAnchor
+         constant:-15],
+
+        [self.resultLabel.topAnchor
+         constraintEqualToAnchor:
+         resultContainer.topAnchor
+         constant:10],
+
+        [self.resultLabel.bottomAnchor
+         constraintEqualToAnchor:
+         resultContainer.bottomAnchor
+         constant:-10]
+    ]];
+
+    [stack addArrangedSubview:resultContainer];
+
+    // =========================================================
+    // 長度
+    // =========================================================
 
     self.lengthLabel =
         MakeLabel(@"長度：16",
@@ -57,6 +218,12 @@
 
     self.lengthLabel.textAlignment =
         NSTextAlignmentCenter;
+
+    [stack addArrangedSubview:self.lengthLabel];
+
+    // =========================================================
+    // Slider
+    // =========================================================
 
     self.lengthSlider =
         [[UISlider alloc] init];
@@ -68,6 +235,12 @@
     [self.lengthSlider addTarget:self
                           action:@selector(lengthChanged:)
                 forControlEvents:UIControlEventValueChanged];
+
+    [stack addArrangedSubview:self.lengthSlider];
+
+    // =========================================================
+    // 數字開關
+    // =========================================================
 
     UISwitch *numberSwitch =
         [[UISwitch alloc] init];
@@ -93,10 +266,17 @@
     numberRow.axis =
         UILayoutConstraintAxisHorizontal;
 
+    numberRow.alignment =
+        UIStackViewAlignmentCenter;
+
     numberRow.distribution =
         UIStackViewDistributionEqualSpacing;
 
-    numberRow.translatesAutoresizingMaskIntoConstraints = NO;
+    [stack addArrangedSubview:numberRow];
+
+    // =========================================================
+    // 特殊符號開關
+    // =========================================================
 
     UISwitch *symbolSwitch =
         [[UISwitch alloc] init];
@@ -122,10 +302,17 @@
     symbolRow.axis =
         UILayoutConstraintAxisHorizontal;
 
+    symbolRow.alignment =
+        UIStackViewAlignmentCenter;
+
     symbolRow.distribution =
         UIStackViewDistributionEqualSpacing;
 
-    symbolRow.translatesAutoresizingMaskIntoConstraints = NO;
+    [stack addArrangedSubview:symbolRow];
+
+    // =========================================================
+    // 產生按鈕
+    // =========================================================
 
     UIButton *generateButton =
         MakeButton(@"🔐 產生隨機字串",
@@ -135,6 +322,15 @@
                        action:@selector(generatePassword)
              forControlEvents:UIControlEventTouchUpInside];
 
+    [generateButton.heightAnchor
+        constraintEqualToConstant:55].active = YES;
+
+    [stack addArrangedSubview:generateButton];
+
+    // =========================================================
+    // 複製按鈕
+    // =========================================================
+
     UIButton *copyButton =
         MakeButton(@"📋 複製結果",
                    [UIColor systemGreenColor]);
@@ -143,159 +339,10 @@
                    action:@selector(copyPassword)
          forControlEvents:UIControlEventTouchUpInside];
 
-    [self.view addSubview:title];
-    [self.view addSubview:self.resultLabel];
-    [self.view addSubview:self.lengthLabel];
-    [self.view addSubview:self.lengthSlider];
-    [self.view addSubview:numberRow];
-    [self.view addSubview:symbolRow];
-    [self.view addSubview:generateButton];
-    [self.view addSubview:copyButton];
+    [copyButton.heightAnchor
+        constraintEqualToConstant:55].active = YES;
 
-    [NSLayoutConstraint activateConstraints:@[
-
-        // 標題
-        [title.topAnchor
-         constraintEqualToAnchor:
-         self.view.safeAreaLayoutGuide.topAnchor
-         constant:30],
-
-        [title.leadingAnchor
-         constraintEqualToAnchor:
-         self.view.leadingAnchor
-         constant:20],
-
-        [title.trailingAnchor
-         constraintEqualToAnchor:
-         self.view.trailingAnchor
-         constant:-20],
-
-        // 隨機字串結果區
-        [self.resultLabel.topAnchor
-         constraintEqualToAnchor:
-         title.bottomAnchor
-         constant:25],
-
-        [self.resultLabel.leadingAnchor
-         constraintEqualToAnchor:
-         self.view.leadingAnchor
-         constant:20],
-
-        [self.resultLabel.trailingAnchor
-         constraintEqualToAnchor:
-         self.view.trailingAnchor
-         constant:-20],
-
-        // 固定結果區高度，避免長字串把整個畫面往下推
-        [self.resultLabel.heightAnchor
-         constraintEqualToConstant:90],
-
-        // 長度文字
-        [self.lengthLabel.topAnchor
-         constraintEqualToAnchor:
-         self.resultLabel.bottomAnchor
-         constant:20],
-
-        [self.lengthLabel.leadingAnchor
-         constraintEqualToAnchor:
-         self.view.leadingAnchor
-         constant:25],
-
-        [self.lengthLabel.trailingAnchor
-         constraintEqualToAnchor:
-         self.view.trailingAnchor
-         constant:-25],
-
-        // Slider
-        [self.lengthSlider.topAnchor
-         constraintEqualToAnchor:
-         self.lengthLabel.bottomAnchor
-         constant:8],
-
-        [self.lengthSlider.leadingAnchor
-         constraintEqualToAnchor:
-         self.view.leadingAnchor
-         constant:25],
-
-        [self.lengthSlider.trailingAnchor
-         constraintEqualToAnchor:
-         self.view.trailingAnchor
-         constant:-25],
-
-        // 數字開關
-        [numberRow.topAnchor
-         constraintEqualToAnchor:
-         self.lengthSlider.bottomAnchor
-         constant:18],
-
-        [numberRow.leadingAnchor
-         constraintEqualToAnchor:
-         self.view.leadingAnchor
-         constant:25],
-
-        [numberRow.trailingAnchor
-         constraintEqualToAnchor:
-         self.view.trailingAnchor
-         constant:-25],
-
-        // 特殊符號開關
-        [symbolRow.topAnchor
-         constraintEqualToAnchor:
-         numberRow.bottomAnchor
-         constant:12],
-
-        [symbolRow.leadingAnchor
-         constraintEqualToAnchor:
-         self.view.leadingAnchor
-         constant:25],
-
-        [symbolRow.trailingAnchor
-         constraintEqualToAnchor:
-         self.view.trailingAnchor
-         constant:-25],
-
-        // 產生按鈕
-        [generateButton.topAnchor
-         constraintEqualToAnchor:
-         symbolRow.bottomAnchor
-         constant:20],
-
-        [generateButton.leadingAnchor
-         constraintEqualToAnchor:
-         self.view.leadingAnchor
-         constant:25],
-
-        [generateButton.trailingAnchor
-         constraintEqualToAnchor:
-         self.view.trailingAnchor
-         constant:-25],
-
-        [generateButton.heightAnchor
-         constraintEqualToConstant:52],
-
-        // 複製按鈕
-        [copyButton.topAnchor
-         constraintEqualToAnchor:
-         generateButton.bottomAnchor
-         constant:10],
-
-        [copyButton.leadingAnchor
-         constraintEqualToAnchor:
-         generateButton.leadingAnchor],
-
-        [copyButton.trailingAnchor
-         constraintEqualToAnchor:
-         generateButton.trailingAnchor],
-
-        [copyButton.heightAnchor
-         constraintEqualToConstant:52],
-
-        // 確保複製按鈕不會跑出 Safe Area
-        [copyButton.bottomAnchor
-         constraintLessThanOrEqualToAnchor:
-         self.view.safeAreaLayoutGuide.bottomAnchor
-         constant:-10]
-    ]];
+    [stack addArrangedSubview:copyButton];
 }
 
 #pragma mark - Length
@@ -315,12 +362,14 @@
 
 - (void)numbersChanged:(UISwitch *)sender {
 
-    self.includeNumbers = sender.isOn;
+    self.includeNumbers =
+        sender.isOn;
 }
 
 - (void)symbolsChanged:(UISwitch *)sender {
 
-    self.includeSymbols = sender.isOn;
+    self.includeSymbols =
+        sender.isOn;
 }
 
 #pragma mark - Generate
@@ -348,7 +397,10 @@
     }
 
     if (characters.length == 0) {
-        self.resultLabel.text = @"請至少選擇一種字元";
+
+        self.resultLabel.text =
+            @"請至少選擇一種字元";
+
         return;
     }
 
@@ -370,7 +422,8 @@
         [result appendFormat:@"%C", character];
     }
 
-    self.resultLabel.text = result;
+    self.resultLabel.text =
+        result;
 
     [self animateResult];
 }
@@ -383,7 +436,8 @@
         self.resultLabel.text;
 
     if (password.length == 0 ||
-        [password isEqualToString:@"點擊按鈕產生"]) {
+        [password isEqualToString:@"點擊按鈕產生"] ||
+        [password isEqualToString:@"請至少選擇一種字元"]) {
 
         return;
     }
@@ -463,7 +517,7 @@
     [UIView animateWithDuration:0.2
                      animations:^{
 
-        toast.alpha = 1;
+        toast.alpha = 1.0;
 
         toast.transform =
             CGAffineTransformIdentity;
